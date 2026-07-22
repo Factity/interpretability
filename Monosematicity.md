@@ -31,6 +31,8 @@ We mapped particular data points to the network and
 
 
 
+![](./Excalidraw/Pasted%20image%20260722181138.png)
+
 
 
 |                   | Transformer | sparse autoencoder |
