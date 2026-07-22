@@ -3,17 +3,17 @@ In the previous sections we have seen the phenomenon of superposition.  We have 
 
 As the dimensions of the features grows larger sparsity grows rapidly, distances become less informative. 
 
-![[Excalidraw/Pasted image 20260722143150.png]]
+
+![](./Excalidraw/Pasted%20image%20260722143150.png)
 
 the volume of the latent space grows larger exponentially. The internal states cannot be understood unless they are decomposed into independent components. 
-![[Excalidraw/Pasted image 20260722151016.png]]
+![](./Excalidraw/Pasted%20image%20260722151016.png)
+
 
 
 The meaning of the concept of local neighborhood $\epsilon$ becomes less informative. It becomes a lot more interpretable when it is just one layer attention only models but as the size grows and MLP block is added it becomes almost impossible  to break it down into interpretable features. 
 
-
-![[Excalidraw/Pasted image 20260722164401.png]]
-
+![](./Excalidraw/Pasted%20image%20260722164401.png)
 
 
 
@@ -25,11 +25,17 @@ Our objective is to break down the
 
 
 
+<<<<<<< HEAD
 ![[./Excalidraw/Pasted image 20260722181138.png]]]
+=======
+![](./Excalidraw/Pasted%20image%20260722181138.png)
+>>>>>>> origin/main
 
 We mapped particular data points to the network and 
 
 
+
+![](./Excalidraw/Pasted%20image%20260722181138.png)
 
 
 
