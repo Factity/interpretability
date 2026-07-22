@@ -3,7 +3,7 @@ In the previous sections we have seen the phenomenon of superposition.  We have 
 
 As the dimensions of the features grows larger sparsity grows rapidly, distances become less informative. 
 
-![](680eb4453f047eaf178814d62e071aca.png)
+![](attachment/680eb4453f047eaf178814d62e071aca.png)
 
 the volume of the latent space grows larger exponentially. The internal states cannot be understood unless they are decomposed into independent components. 
 ![](d2ad820dd983a85d10a1557c8b71ef08.png)
