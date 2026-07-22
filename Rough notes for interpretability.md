@@ -1,9 +1,13 @@
+   
+
+
+“The mind, once stretched by a new idea, never returns to its original dimensions.” — Ralph Waldo Emerson 
 
 
 
-“The mind, once stretched by a new idea, never returns to its original dimensions.” — Ralph Waldo Emerson
 
-So I had this conversation about ai once, A strange but small encounter I was asked to explain to me simply How ai works ? I was overwhelmed, possibly so that I have spent the last couple of years studying it. There is simply way too much and I could not get myself to a point where I could start. I do selective speak which I often consider one of my traits whether it is positive or negative. I am really not sure I talk with my audience in mind. I simply was so overwhelmed that I simply said well well “AI just works ”. I did not give a good impression for sure with some awkward stares we moved on. Long long time ago I read some of the feyman’s work whenever I encounter the problem of breaking down a subject and doing selective speak. I often found myself going back to his work and try to understand how would he have explained it. Now I am not no feyman nothing but an average joe. I did what I can to breakdown everything I learnt about “How AI works the question of why although what is another behemoth on its own in this chapter we will stick with why”
+So I had this conversation about ai once, A strange but small encounter I was asked to explain  simply How ai works ? I was overwhelmed, possibly so that I have spent the last couple of years studying it. There is simply way too much and I could not get myself to a point where I could start. I do selective speak which I often consider one of my traits whether it is positive or negative. I am really not sure I talk with my audience in mind. I simply was so overwhelmed that I simply said well well “AI just works ”. I did not give a good impression for sure with some awkward stares we moved on. Long long time ago I read some of feyman’s work whenever I encounter the problem of breaking down a subject and doing selective speak. I often found myself going back to his work and try to understand how would he have explained it. Now I am not no feyman nothing but an average joe. I did what I can to breakdown everything I learnt about “How AI works the question of why although what is another behemoth on its own in this chapter we will stick with why”
+
 
 
 I started digging curious as I was there are simply way too many fields, way too much stuff condensing it all is simply not possible and the best part about this is the people who are actually building this technology have very little grasp on the field themselves. With the ever increasing size of the models use cases the sheer scale alone should make it almost impossible to study these. Humans as we are with the indefinite amount of grit we started chipping away at these with our chisel.
@@ -1110,3 +1114,6 @@ Our results make use of a new interpretability technique called the Jacobian len
 
  
 
+[^1]: 
+
+[^2]: 
