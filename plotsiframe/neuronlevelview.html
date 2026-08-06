@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuron-Level View — Superposition Learning Dynamics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    <style>
+        :root{
+            --ink:#0e1418;
+            --panel:#161f25;
+            --panel-2:#1c272e;
+            --line:#2b3841;
+            --bone:#eae7df;
+            --muted:#8fa0a8;
+            --teal:#57c7ba;
+            --amber:#e3a94a;
+            --coral:#e8735f;
+        }
+        *{box-sizing:border-box;}
+        html,body{margin:0;padding:0;}
+        body{
+            background:
+                radial-gradient(1100px 500px at 15% -10%, rgba(87,199,186,0.08), transparent 60%),
+                radial-gradient(900px 500px at 90% 10%, rgba(227,169,74,0.06), transparent 55%),
+                var(--ink);
+            color:var(--bone);
+            font-family:'IBM Plex Sans', sans-serif;
+            line-height:1.55;
+        }
+        .wrap{max-width:1180px;margin:0 auto;padding:56px 28px 100px;}
+        header.masthead{margin-bottom:56px;}
+        .eyebrow{
+            font-family:'IBM Plex Mono', monospace;
+            font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);
+            margin:0 0 14px;
+        }
+        h1{
+            font-family:'Space Grotesk', sans-serif;
+            font-weight:700;
+            font-size:clamp(30px,4vw,46px);
+            line-height:1.08;
+            margin:0 0 18px;
+            letter-spacing:-0.01em;
+        }
+        header.masthead p{
+            color:var(--muted);
+            max-width:700px;
+            font-size:15.5px;
+            margin:0;
+        }
+        section.card{
+            background:linear-gradient(180deg, var(--panel), var(--panel-2));
+            border:1px solid var(--line);
+            border-radius:14px;
+            padding:34px 34px 30px;
+            margin-bottom:34px;
+            position:relative;
+            overflow:hidden;
+        }
+        section.card::before{
+            content:"";
+            position:absolute;top:0;left:0;right:0;height:3px;
+            background:linear-gradient(90deg, var(--teal), transparent 70%);
+        }
+        .eyebrow-num{
+            font-family:'IBM Plex Mono', monospace;
+            font-size:12px;color:var(--muted);letter-spacing:.12em;
+            display:flex;align-items:center;gap:10px;margin-bottom:8px;
+        }
+        .eyebrow-num .num{color:var(--amber);}
+        h2{
+            font-family:'Space Grotesk', sans-serif;
+            font-size:24px;font-weight:600;margin:0 0 12px;letter-spacing:-0.005em;
+        }
+        .desc{color:var(--muted);font-size:14.5px;max-width:820px;margin:0 0 22px;}
+        .controls{
+            display:flex;flex-wrap:wrap;gap:26px 36px;
+            background:rgba(0,0,0,0.18);
+            border:1px solid var(--line);
+            border-radius:10px;
+            padding:16px 20px;
+            margin-bottom:22px;
+        }
+        .control{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1;}
+        .control label{
+            font-size:12.5px;color:var(--bone);display:flex;justify-content:space-between;
+            font-family:'IBM Plex Mono', monospace;
+        }
+        .control label .val{color:var(--teal);}
+        input[type=range]{
+            -webkit-appearance:none;appearance:none;
+            width:100%;height:4px;border-radius:2px;
+            background:var(--line);outline:none;cursor:pointer;
+        }
+        input[type=range]::-webkit-slider-thumb{
+            -webkit-appearance:none;appearance:none;
+            width:16px;height:16px;border-radius:50%;
+            background:var(--teal);border:2px solid #0e1418;
+            box-shadow:0 0 0 2px var(--teal);
+            cursor:pointer;
+        }
+        input[type=range]::-moz-range-thumb{
+            width:14px;height:14px;border-radius:50%;
+            background:var(--teal);border:2px solid #0e1418;
+            box-shadow:0 0 0 2px var(--teal);cursor:pointer;
+        }
+        .plot-full{width:100%;height:460px;}
+        footer{
+            text-align:center;color:var(--muted);font-size:12px;
+            font-family:'IBM Plex Mono', monospace;
+            margin-top:40px;
+        }
+        @media (max-width:720px){
+            section.card{padding:24px 18px;}
+            .wrap{padding:36px 16px 80px;}
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <p class="eyebrow">Toy Models of Superposition &middot; neuron view</p>
+        <h1>Reading superposition off a single weight matrix</h1>
+        <p>Each column below is one hidden neuron; each stacked segment is one entry of that neuron's column in W, colored by the feature (row) it belongs to. Segment height is the magnitude of the weight, and negative weights are drawn below the axis. Push sparsity up and watch extra features get squeezed in.</p>
+    </header>
+
+    <section class="card" id="neuron-section">
+        <div class="eyebrow-num"><span class="num">03</span><span>Neuron-Level View</span></div>
+        <h2>Columns of W, one stack per hidden neuron</h2>
+        <div class="controls">
+            <div class="control">
+                <label>Sparsity / superposition <span class="val" id="sparsityVal">0.00</span></label>
+                <input type="range" id="sparsitySlider" min="0" max="100" value="0" step="1">
+            </div>
+        </div>
+        <div class="plot-full" id="stackPlot"></div>
+    </section>
+    <footer>Synthetic illustrative data · built with Plotly.js</footer>
+</div>
+
+<script>
+    const FEATURE_COLORS = ['#ef6c5a','#4fb8d1','#f2c14e','#8bd17c','#b18cd9','#f28cb1','#5c9eff','#e0a458'];
+    const PLOT_FONT = { family:'IBM Plex Sans, sans-serif', color:'#c7d2d8', size:12 };
+    const AXIS_GRID = 'rgba(255,255,255,0.08)';
+    const PAPER_BG = 'rgba(0,0,0,0)';
+
+    const N_FEATURES = 8;
+    const M_NEURONS = 5;
+    const NEURON_LABELS = Array.from({length:M_NEURONS},(_,i)=>'N'+i);
+
+    function buildW(t){
+        const W = [];
+        for(let i=0;i<N_FEATURES;i++){
+            const row = new Array(M_NEURONS).fill(0);
+            const primary = i % M_NEURONS;
+            const isExtra = i >= M_NEURONS;
+            const baseWeight = isExtra ? (0.12 + 0.78*t) : (0.95 - 0.10*t);
+            row[primary] = baseWeight;
+            const interferenceMag = 0.28*t;
+            for(let k=1;k<=2;k++){
+                const j = (primary + k) % M_NEURONS;
+                const sign = ((i+k) % 2 === 0) ? 1 : -1;
+                row[j] += sign * interferenceMag * (1 - (k-1)*0.35);
+            }
+            W.push(row);
+        }
+        return W;
+    }
+
+    let curSparsity = 0;
+
+    function initSection3(){
+        const t = curSparsity/100;
+        const W = buildW(t);
+        const traces = [];
+        for(let i=0;i<N_FEATURES;i++){
+            traces.push({
+                type:'bar',
+                x:NEURON_LABELS,
+                y:W[i],
+                name:'Feature '+i,
+                marker:{color:FEATURE_COLORS[i]}
+            });
+        }
+        Plotly.newPlot('stackPlot', traces, {
+            height:460, autosize:true,
+            paper_bgcolor:PAPER_BG, plot_bgcolor:PAPER_BG, font:PLOT_FONT,
+            margin:{l:50,r:20,t:36,b:50},
+            title:{text:'Columns of W, one stack per hidden neuron', font:{size:14, family:"Space Grotesk, sans-serif", color:'#eae7df'}},
+            barmode:'relative',
+            bargap:0.35,
+            legend:{orientation:'h', y:-0.2, font:{size:11}},
+            xaxis:{gridcolor:AXIS_GRID, zerolinecolor:AXIS_GRID, color:'#8fa0a8'},
+            yaxis:{title:'weight value', gridcolor:AXIS_GRID, zerolinecolor:'rgba(255,255,255,0.3)', color:'#8fa0a8'}
+        }, {displayModeBar:false, responsive:true});
+    }
+
+    function updateSection3(){
+        const t = curSparsity/100;
+        const W = buildW(t);
+        Plotly.restyle('stackPlot', { y: W.map(row=>row) }, Array.from({length:N_FEATURES},(_,i)=>i));
+    }
+
+    document.getElementById('sparsitySlider').addEventListener('input', e=>{
+        curSparsity = +e.target.value;
+        document.getElementById('sparsityVal').textContent = (curSparsity/100).toFixed(2);
+        updateSection3();
+    });
+
+    initSection3();
+    window.addEventListener('resize', ()=> Plotly.Plots.resize(document.getElementById('stackPlot')));
+</script>
+</body>
+</html>

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconstruction Snapshot — Where You Attack Matters</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    <style>
+        :root{
+            --ink:#0e1418;
+            --panel:#161f25;
+            --panel-2:#1c272e;
+            --line:#2b3841;
+            --bone:#eae7df;
+            --muted:#8fa0a8;
+            --teal:#57c7ba;
+            --amber:#e3a94a;
+            --input-red:#e8544f;
+            --bottleneck-violet:#8f7fe8;
+        }
+        *{box-sizing:border-box;}
+        html,body{margin:0;padding:0;}
+        body{
+            background:
+                radial-gradient(1100px 500px at 15% -10%, rgba(232,84,79,0.07), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(143,127,232,0.07), transparent 55%),
+                var(--ink);
+            color:var(--bone);
+            font-family:'IBM Plex Sans', sans-serif;
+            line-height:1.55;
+        }
+        .wrap{max-width:1180px;margin:0 auto;padding:56px 28px 100px;}
+        header.masthead{margin-bottom:40px;}
+        .eyebrow{
+            font-family:'IBM Plex Mono', monospace;
+            font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);
+            margin:0 0 14px;
+        }
+        h1{
+            font-family:'Space Grotesk', sans-serif;
+            font-weight:700;
+            font-size:clamp(28px,4vw,42px);
+            line-height:1.1;
+            margin:0 0 18px;
+            letter-spacing:-0.01em;
+        }
+        header.masthead p{ color:var(--muted); max-width:740px; font-size:15.5px; margin:0 0 10px; }
+        .note{
+            font-family:'IBM Plex Mono', monospace;
+            font-size:12.5px;color:var(--muted);
+            border-left:2px solid var(--line); padding-left:12px;
+        }
+        section.card{
+            background:linear-gradient(180deg, var(--panel), var(--panel-2));
+            border:1px solid var(--line);
+            border-radius:14px;
+            padding:34px 34px 30px;
+            margin-bottom:30px;
+            position:relative; overflow:hidden;
+        }
+        section.card::before{
+            content:"";
+            position:absolute;top:0;left:0;right:0;height:3px;
+            background:linear-gradient(90deg, var(--input-red), var(--bottleneck-violet) 60%, transparent 95%);
+        }
+        .eyebrow-num{
+            font-family:'IBM Plex Mono', monospace;
+            font-size:12px;color:var(--muted);letter-spacing:.12em;
+            display:flex;align-items:center;gap:10px;margin-bottom:8px;
+        }
+        .eyebrow-num .num{color:var(--amber);}
+        h2{ font-family:'Space Grotesk', sans-serif; font-size:23px;font-weight:600;margin:0 0 12px;letter-spacing:-0.005em; }
+        .desc{color:var(--muted);font-size:14.5px;max-width:840px;margin:0 0 20px;}
+        .controls{
+            display:flex;flex-wrap:wrap;gap:24px 32px;
+            background:rgba(0,0,0,0.2);
+            border:1px solid var(--line);
+            border-radius:10px;
+            padding:18px 22px;
+        }
+        .control{display:flex;flex-direction:column;gap:6px;min-width:210px;flex:1;}
+        .control label{
+            font-size:12.5px;color:var(--bone);display:flex;justify-content:space-between;
+            font-family:'IBM Plex Mono', monospace;
+        }
+        .control label .val{color:var(--teal);}
+        input[type=range]{
+            -webkit-appearance:none;appearance:none;
+            width:100%;height:4px;border-radius:2px;
+            background:var(--line);outline:none;cursor:pointer;
+        }
+        input[type=range]::-webkit-slider-thumb{
+            -webkit-appearance:none;appearance:none;
+            width:16px;height:16px;border-radius:50%;
+            background:var(--teal);border:2px solid #0e1418;
+            box-shadow:0 0 0 2px var(--teal); cursor:pointer;
+        }
+        input[type=range]::-moz-range-thumb{
+            width:14px;height:14px;border-radius:50%;
+            background:var(--teal);border:2px solid #0e1418;
+            box-shadow:0 0 0 2px var(--teal);cursor:pointer;
+        }
+        .stat-row{ display:flex; flex-wrap:wrap; gap:14px; margin:22px 0 6px; }
+        .stat-tile{
+            flex:1 1 210px;
+            background:rgba(0,0,0,0.22);
+            border:1px solid var(--line);
+            border-radius:10px;
+            padding:14px 16px;
+        }
+        .stat-tile .stat-label{
+            font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted);
+            text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;
+        }
+        .stat-tile .stat-value{ font-family:'Space Grotesk', sans-serif; font-size:22px; font-weight:600; }
+        .stat-tile.input-flavor .stat-value{ color:var(--input-red); }
+        .stat-tile.bottleneck-flavor .stat-value{ color:var(--bottleneck-violet); }
+        .plot-full{width:100%;height:440px;}
+        .legend-note{ font-size:12.5px;color:var(--muted);margin-top:14px; font-family:'IBM Plex Mono', monospace; }
+        .legend-swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;}
+        footer{ text-align:center;color:var(--muted);font-size:12px; font-family:'IBM Plex Mono', monospace; margin-top:36px; }
+        @media (max-width:720px){ section.card{padding:24px 18px;} .wrap{padding:36px 16px 80px;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <p class="eyebrow">Attack Location &middot; reconstruction snapshot</p>
+        <h1>Where you attack matters — see the reconstruction</h1>
+        <p>The same L<sub>2</sub> perturbation budget injected at the <strong style="color:var(--input-red)">input</strong> or at the <strong style="color:var(--bottleneck-violet)">bottleneck</strong> moves the reconstruction of the target feature differently and creates different collateral damage on untouched features.</p>
+        <p class="note">Features are abstract synthetic directions (F0 … F7) — they are not meant to be interpretable.</p>
+    </header>
+
+    <section class="card" id="control-section">
+        <div class="eyebrow-num"><span class="num">•</span><span>Controls</span></div>
+        <h2>Set the scenario</h2>
+        <div class="controls">
+            <div class="control">
+                <label>Target feature <span class="val" id="featureVal">Feature 0</span></label>
+                <input type="range" id="featureSlider" min="0" max="7" value="0" step="1">
+            </div>
+            <div class="control">
+                <label>Sparsity / superposition <span class="val" id="sparsityVal">0.50</span></label>
+                <input type="range" id="sparsitySlider" min="0" max="100" value="50" step="1">
+            </div>
+            <div class="control">
+                <label>Training stage (loss) <span class="val" id="trainVal">0.70</span></label>
+                <input type="range" id="trainSlider" min="0" max="100" value="70" step="1">
+            </div>
+            <div class="control">
+                <label>Attack budget (‖δ‖₂ as % of input norm) <span class="val" id="budgetVal">30</span></label>
+                <input type="range" id="budgetSlider" min="0" max="100" value="30" step="1">
+            </div>
+        </div>
+    </section>
+
+    <section class="card" id="section-a">
+        <div class="eyebrow-num"><span class="num">01</span><span>Reconstructed activations</span></div>
+        <h2>Clean vs. attacked reconstruction</h2>
+        <p class="desc">
+            The clean bar shows the model's normal reconstruction when only the target feature is active.
+            The other two bars show the reconstruction after an optimal L<sub>2</sub>-bounded attack at the
+            input and at the bottleneck. Any movement on a non‑target feature is collateral damage.
+        </p>
+        <div class="plot-full" id="reconPlot"></div>
+        <div class="stat-row">
+            <div class="stat-tile input-flavor">
+                <div class="stat-label">Target Δ · attack @ input</div>
+                <div class="stat-value" id="statTargetInput">—</div>
+            </div>
+            <div class="stat-tile bottleneck-flavor">
+                <div class="stat-label">Target Δ · attack @ bottleneck</div>
+                <div class="stat-value" id="statTargetBottleneck">—</div>
+            </div>
+            <div class="stat-tile input-flavor">
+                <div class="stat-label">Collateral · attack @ input</div>
+                <div class="stat-value" id="statCollInput">—</div>
+            </div>
+            <div class="stat-tile bottleneck-flavor">
+                <div class="stat-label">Collateral · attack @ bottleneck</div>
+                <div class="stat-value" id="statCollBottleneck">—</div>
+            </div>
+        </div>
+        <div class="legend-note">
+            <span class="legend-swatch" style="background:#8fa0a8;"></span>clean
+            &nbsp;&nbsp;<span class="legend-swatch" style="background:#e8544f;"></span>attack @ input
+            &nbsp;&nbsp;<span class="legend-swatch" style="background:#8f7fe8;"></span>attack @ bottleneck
+            &nbsp;&nbsp;— collateral = summed absolute change over every non‑target feature.
+        </div>
+    </section>
+    <footer>Synthetic illustrative data · built with Plotly.js</footer>
+</div>
+
+<script>
+    const N_FEATURES = 8;
+    const M_NEURONS = 5;
+
+    function smoothstep(u){ return u*u*(3-2*u); }
+    function lerp(a,b,u){ return a + (b-a)*u; }
+
+    function buildWFinal(t){
+        const W = [];
+        for(let i=0;i<N_FEATURES;i++){
+            const row = new Array(M_NEURONS).fill(0);
+            const primary = i % M_NEURONS;
+            const isExtra = i >= M_NEURONS;
+            const baseWeight = isExtra ? (0.12 + 0.78*t) : (0.95 - 0.10*t);
+            row[primary] = baseWeight;
+            const interferenceMag = 0.28*t;
+            for(let k=1;k<=2;k++){
+                const j = (primary + k) % M_NEURONS;
+                const sign = ((i+k) % 2 === 0) ? 1 : -1;
+                row[j] += sign * interferenceMag * (1 - (k-1)*0.35);
+            }
+            W.push(row);
+        }
+        return W;
+    }
+
+    function buildWEarly(){
+        const W = [];
+        for(let i=0;i<N_FEATURES;i++){
+            const row = [];
+            for(let j=0;j<M_NEURONS;j++){
+                row.push(0.05 * Math.sin(i*3.1 + j*1.7));
+            }
+            W.push(row);
+        }
+        return W;
+    }
+
+    function getA(trainPct, sparsityPct){
+        const early = buildWEarly();
+        const final = buildWFinal(sparsityPct/100);
+        const u = smoothstep(trainPct/100);
+        const A = [];
+        for(let i=0;i<N_FEATURES;i++){
+            const row = [];
+            for(let j=0;j<M_NEURONS;j++) row.push(lerp(early[i][j], final[i][j], u));
+            A.push(row);
+        }
+        return A;
+    }
+
+    function encode(A, x){ const h = new Array(M_NEURONS).fill(0); for(let j=0;j<M_NEURONS;j++){ let s=0; for(let i=0;i<N_FEATURES;i++) s += A[i][j]*x[i]; h[j] = s; } return h; }
+    function decode(A, h){ const out = new Array(N_FEATURES).fill(0); for(let i=0;i<N_FEATURES;i++){ let s=0; for(let j=0;j<M_NEURONS;j++) s += A[i][j]*h[j]; out[i] = s; } return out; }
+    function relu(v){ return v.map(x=>Math.max(0,x)); }
+    function vnorm(v){ return Math.sqrt(v.reduce((a,b)=>a+b*b,0)); }
+    function computeM(A){ const M = []; for(let i=0;i<N_FEATURES;i++){ const row = []; for(let k=0;k<N_FEATURES;k++){ let s=0; for(let j=0;j<M_NEURONS;j++) s += A[i][j]*A[k][j]; row.push(s); } M.push(row); } return M; }
+
+    function runAttackScenario(trainPct, sparsityPct, targetIdx, budgetPct){
+        const A = getA(trainPct, sparsityPct);
+        const M = computeM(A);
+        const eps = budgetPct/100;
+        const xClean = new Array(N_FEATURES).fill(0); xClean[targetIdx] = 1;
+        const hClean = encode(A, xClean);
+        const xHatClean = relu(decode(A, hClean));
+
+        const mRow = M[targetIdx];
+        const mRowNorm = vnorm(mRow) || 1e-9;
+        const deltaX = mRow.map(v => eps * v / mRowNorm);
+        const xAtk = xClean.map((v,i) => v + deltaX[i]);
+        const hAtkInput = encode(A, xAtk);
+        const xHatAtkInput = relu(decode(A, hAtkInput));
+
+        const aRow = A[targetIdx];
+        const aRowNorm = vnorm(aRow) || 1e-9;
+        const deltaH = aRow.map(v => eps * v / aRowNorm);
+        const hAtkBottleneck = hClean.map((v,j) => v + deltaH[j]);
+        const xHatAtkBottleneck = relu(decode(A, hAtkBottleneck));
+
+        let collInput=0, collBottleneck=0;
+        for(let i=0;i<N_FEATURES;i++){
+            if(i===targetIdx) continue;
+            collInput += Math.abs(xHatAtkInput[i] - xHatClean[i]);
+            collBottleneck += Math.abs(xHatAtkBottleneck[i] - xHatClean[i]);
+        }
+        return {
+            xHatClean, xHatAtkInput, xHatAtkBottleneck,
+            targetDeltaInput: xHatAtkInput[targetIdx] - xHatClean[targetIdx],
+            targetDeltaBottleneck: xHatAtkBottleneck[targetIdx] - xHatClean[targetIdx],
+            collInput, collBottleneck
+        };
+    }
+
+    const PLOT_FONT = { family:'IBM Plex Sans, sans-serif', color:'#c7d2d8', size:12 };
+    const AXIS_GRID = 'rgba(255,255,255,0.08)';
+    const PAPER_BG = 'rgba(0,0,0,0)';
+    const FEATURE_LABELS = Array.from({length:N_FEATURES},(_,i)=>'F'+i);
+    function fmt(v){ return (v>=0?'+':'') + v.toFixed(3); }
+
+    let state = { feature:0, sparsity:50, train:70, budget:30 };
+
+    function updateStatTiles(r){
+        document.getElementById('statTargetInput').textContent = fmt(r.targetDeltaInput);
+        document.getElementById('statTargetBottleneck').textContent = fmt(r.targetDeltaBottleneck);
+        document.getElementById('statCollInput').textContent = r.collInput.toFixed(3);
+        document.getElementById('statCollBottleneck').textContent = r.collBottleneck.toFixed(3);
+    }
+
+    function updatePlot(){
+        const r = runAttackScenario(state.train, state.sparsity, state.feature, state.budget);
+        Plotly.restyle('reconPlot', {
+            y: [r.xHatClean, r.xHatAtkInput, r.xHatAtkBottleneck]
+        }, [0,1,2]);
+        updateStatTiles(r);
+    }
+
+    function initPlot(){
+        const r = runAttackScenario(state.train, state.sparsity, state.feature, state.budget);
+        Plotly.newPlot('reconPlot', [
+            { type:'bar', x:FEATURE_LABELS, y:r.xHatClean, name:'Clean', marker:{color:'#8fa0a8'} },
+            { type:'bar', x:FEATURE_LABELS, y:r.xHatAtkInput, name:'Attack @ input', marker:{color:'#e8544f'} },
+            { type:'bar', x:FEATURE_LABELS, y:r.xHatAtkBottleneck, name:'Attack @ bottleneck', marker:{color:'#8f7fe8'} },
+        ], {
+            height:440, autosize:true,
+            paper_bgcolor:PAPER_BG, plot_bgcolor:PAPER_BG, font:PLOT_FONT,
+            margin:{l:50,r:20,t:20,b:44},
+            barmode:'group', bargap:0.28, bargroupgap:0.12,
+            legend:{orientation:'h', y:-0.18, font:{size:11}},
+            xaxis:{title:'feature', gridcolor:AXIS_GRID, zerolinecolor:AXIS_GRID, color:'#8fa0a8'},
+            yaxis:{title:'reconstructed activation', gridcolor:AXIS_GRID, zerolinecolor:AXIS_GRID, color:'#8fa0a8'}
+        }, {displayModeBar:false, responsive:true});
+        updateStatTiles(r);
+    }
+
+    document.getElementById('featureSlider').addEventListener('input', e=>{
+        state.feature = +e.target.value;
+        document.getElementById('featureVal').textContent = 'Feature ' + state.feature;
+        updatePlot();
+    });
+    document.getElementById('sparsitySlider').addEventListener('input', e=>{
+        state.sparsity = +e.target.value;
+        document.getElementById('sparsityVal').textContent = (state.sparsity/100).toFixed(2);
+        updatePlot();
+    });
+    document.getElementById('trainSlider').addEventListener('input', e=>{
+        state.train = +e.target.value;
+        document.getElementById('trainVal').textContent = (state.train/100).toFixed(2);
+        updatePlot();
+    });
+    document.getElementById('budgetSlider').addEventListener('input', e=>{
+        state.budget = +e.target.value;
+        document.getElementById('budgetVal').textContent = state.budget;
+        updatePlot();
+    });
+
+    initPlot();
+    window.addEventListener('resize', ()=> Plotly.Plots.resize(document.getElementById('reconPlot')));
+</script>
+</body>
+</html>

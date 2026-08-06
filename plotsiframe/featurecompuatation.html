@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computation in Superposition — Live Forward Pass</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    <style>
+        :root {
+            --ink: #0e1418;
+            --panel: #161f25;
+            --panel-2: #1c272e;
+            --line: #2b3841;
+            --bone: #eae7df;
+            --muted: #8fa0a8;
+            --teal: #57c7ba;
+            --amber: #e3a94a;
+            --coral: #e8735f;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background:
+                radial-gradient(1100px 500px at 15% -10%, rgba(87,199,186,0.08), transparent 60%),
+                radial-gradient(900px 500px at 90% 10%, rgba(227,169,74,0.06), transparent 55%),
+                var(--ink);
+            color: var(--bone);
+            font-family: 'IBM Plex Sans', sans-serif;
+            line-height: 1.55;
+        }
+        .wrap { max-width: 1000px; margin: 0 auto; padding: 56px 28px 100px; }
+        header.masthead { margin-bottom: 40px; }
+        .eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--teal);
+            margin: 0 0 14px;
+        }
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: clamp(30px, 4vw, 42px);
+            line-height: 1.08;
+            margin: 0 0 18px;
+            letter-spacing: -0.01em;
+        }
+        header.masthead p { color: var(--muted); max-width: 720px; font-size: 15px; margin: 0; }
+        .card {
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 28px 28px 24px;
+            margin-bottom: 34px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: "";
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--teal), transparent 70%);
+        }
+        .controls {
+            display: flex; flex-wrap: wrap; gap: 20px 30px;
+            background: rgba(0,0,0,0.18);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+        .control {
+            display: flex; flex-direction: column; gap: 6px;
+            min-width: 200px; flex: 1;
+        }
+        .control label {
+            font-size: 12.5px; color: var(--bone);
+            display: flex; justify-content: space-between;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .control label .val { color: var(--teal); }
+        input[type=range] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 4px; border-radius: 2px;
+            background: var(--line); outline: none; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--teal); border: 2px solid #0e1418;
+            box-shadow: 0 0 0 2px var(--teal); cursor: pointer;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--teal); border: 2px solid #0e1418;
+            box-shadow: 0 0 0 2px var(--teal); cursor: pointer;
+        }
+        .plot-container { width: 100%; height: 500px; }
+        .legend-note {
+            font-size: 13px; color: var(--muted); margin-top: 12px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        footer {
+            text-align: center; color: var(--muted); font-size: 12px;
+            font-family: 'IBM Plex Mono', monospace; margin-top: 40px;
+        }
+        @media (max-width: 720px) {
+            .card { padding: 24px 18px; }
+            .wrap { padding: 36px 16px 80px; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <p class="eyebrow">Computation in Superposition · forward‑pass visualisation</p>
+        <h1>How absolute value &amp; asymmetric inhibition compute in superposition</h1>
+        <p>Choose which features are present, then adjust asymmetry to see how the network’s activations change. The three‑neuron circuit computes |A+B| under standard superposition, and the asymmetric motif allows one feature to ignore the other without being ignored itself.</p>
+    </header>
+
+    <section class="card">
+        <div class="controls">
+            <div class="control">
+                <label>Feature A input <span class="val" id="aVal">1.0</span></label>
+                <input type="range" id="aSlider" min="0" max="100" value="100" step="1">
+            </div>
+            <div class="control">
+                <label>Feature B input <span class="val" id="bVal">0.0</span></label>
+                <input type="range" id="bSlider" min="0" max="100" value="0" step="1">
+            </div>
+            <div class="control">
+                <label>Asymmetry <span class="val" id="asymVal">0.00</span></label>
+                <input type="range" id="asymSlider" min="0" max="100" value="0" step="1">
+            </div>
+        </div>
+        <div class="plot-container" id="forwardPlot"></div>
+        <div class="legend-note" id="explainText">
+            ➔ Standard symmetric superposition: |A+B| appears at the output after ReLU, with both features treated equally.
+        </div>
+    </section>
+    <footer>Synthetic illustrative data · built with Plotly.js</footer>
+</div>
+
+<script>
+    const PLOT_FONT = { family: 'IBM Plex Sans, sans-serif', color: '#c7d2d8', size: 12 };
+    const AXIS_GRID = 'rgba(255,255,255,0.08)';
+    const PAPER_BG = 'rgba(0,0,0,0)';
+
+    const FEATURE_COLORS = ['#ef6c5a', '#4fb8d1'];
+    const NEURON_COLORS = ['#8bd17c', '#f2c14e', '#b18cd9'];
+    const STAGE_LABELS = ['Input A', 'Input B', 'Neuron 1 (abs)', 'Neuron 2 (asym)', 'Neuron 3 (inhib)', 'Output A', 'Output B'];
+
+    // Weight matrices as functions of asymmetry t in [0,1]
+    function getWeights(t) {
+        const asymFactor = 1 + 2 * t;           // 1 -> 3
+        const inhibGate = Math.max(0, Math.min(1, (t - 0.2) / 0.2));
+
+        // Encoder (features -> neurons)
+        const enc = [
+            [1, asymFactor, 2 * inhibGate],    // Feature A
+            [1, -1 / asymFactor, 0]            // Feature B
+        ];
+        // Decoder (neurons -> features)
+        const dec = [
+            [1, 1],                            // Neuron 1 -> (A, B)
+            [1 / asymFactor, asymFactor],      // Neuron 2 -> (A, B)
+            [-0.5 * inhibGate, -3 * inhibGate] // Neuron 3 -> (A, B)
+        ];
+        return { enc, dec };
+    }
+
+    // Compute forward pass: input -> hidden (pre-ReLU) -> hidden -> output (pre-ReLU) -> output (ReLU)
+    function forward(inputA, inputB, t) {
+        const { enc, dec } = getWeights(t);
+        const x = [inputA, inputB];
+        // Hidden pre-activations
+        const h_pre = [
+            enc[0][0]*x[0] + enc[1][0]*x[1],
+            enc[0][1]*x[0] + enc[1][1]*x[1],
+            enc[0][2]*x[0] + enc[1][2]*x[1]
+        ];
+        // Hidden after ReLU
+        const h = h_pre.map(v => Math.max(0, v));
+        // Output pre-activation
+        const y_pre = [
+            dec[0][0]*h[0] + dec[1][0]*h[1] + dec[2][0]*h[2],
+            dec[0][1]*h[0] + dec[1][1]*h[1] + dec[2][1]*h[2]
+        ];
+        // Output after ReLU
+        const y = y_pre.map(v => Math.max(0, v));
+        return { x, h_pre, h, y_pre, y };
+    }
+
+    let inputA = 1.0, inputB = 0.0, asym = 0.0;
+
+    function buildBarTraces(data) {
+        // data.x, data.h_pre, data.h, data.y_pre, data.y
+        const allVals = [
+            data.x[0], data.x[1],
+            data.h_pre[0], data.h_pre[1], data.h_pre[2],
+            data.h[0], data.h[1], data.h[2],
+            data.y_pre[0], data.y_pre[1],
+            data.y[0], data.y[1]
+        ];
+        // We'll use a grouped bar chart with categories:
+        // Group 1: Input A, Input B
+        // Group 2: Neuron 1 pre, Neuron 2 pre, Neuron 3 pre
+        // Group 3: Neuron 1 post, Neuron 2 post, Neuron 3 post
+        // Group 4: Output A pre, Output B pre
+        // Group 5: Output A post, Output B post
+        // Actually to keep it compact, we'll just show key stages: Input, Hidden (post), Output (post),
+        // with pre-activation as a lighter bar overlaid? Better: use two traces per bar: pre and post.
+        // Simpler: just three groups: Input (2 bars), Hidden (3 bars, post-ReLU), Output (2 bars, post-ReLU).
+        // We'll also add a dashed outline for pre-activation if needed, but for clarity, just post-ReLU.
+
+        // Return array of bar traces for each stage.
+        return [
+            { // Input
+                type: 'bar',
+                x: ['Input A', 'Input B'],
+                y: [data.x[0], data.x[1]],
+                marker: { color: FEATURE_COLORS },
+                name: 'Input',
+                legendgroup: 'input'
+            },
+            { // Hidden post-ReLU
+                type: 'bar',
+                x: ['Neuron 1', 'Neuron 2', 'Neuron 3'],
+                y: data.h,
+                marker: { color: NEURON_COLORS },
+                name: 'Hidden (post-ReLU)',
+                legendgroup: 'hidden'
+            },
+            { // Output post-ReLU
+                type: 'bar',
+                x: ['Output A', 'Output B'],
+                y: data.y,
+                marker: { color: FEATURE_COLORS },
+                name: 'Output (post-ReLU)',
+                legendgroup: 'output'
+            }
+        ];
+    }
+
+    function updateExplanation() {
+        const t = asym;
+        const box = document.getElementById('explainText');
+        if (inputA === 0 && inputB === 0) {
+            box.innerHTML = '➔ No input: all activations are zero.';
+        } else if (t < 0.1) {
+            if (inputA > 0 && inputB > 0)
+                box.innerHTML = '➔ Symmetric superposition: |A+B| appears at the output for both features (Neuron 1 acts as absolute value).';
+            else if (inputA > 0)
+                box.innerHTML = '➔ Only A active: absolute value passes through (A appears at output).';
+            else
+                box.innerHTML = '➔ Only B active: absolute value passes through (B appears at output).';
+        } else if (t < 0.4) {
+            box.innerHTML = '➔ Asymmetry emerging: Neuron 2 weights become unequal, causing one-sided interference.';
+        } else if (inputA > 0 && inputB > 0) {
+            box.innerHTML = '➔ Full asymmetric motif: Neuron 3 inhibits Feature B when both are active, converting positive interference into negative (ReLU clipped). Feature A’s output is largely unaffected.';
+        } else if (inputA > 0) {
+            box.innerHTML = '➔ Only A active: asymmetric encoder stores A with larger magnitude, decoder gives strong output.';
+        } else {
+            box.innerHTML = '➔ Only B active: asymmetric encoder stores B with small magnitude, decoder amplifies it back.';
+        }
+    }
+
+    function updatePlot() {
+        const data = forward(inputA, inputB, asym);
+        const traces = buildBarTraces(data);
+
+        // We need to update the existing plot. If first time, create.
+        if (!document.getElementById('forwardPlot')._initialized) {
+            Plotly.newPlot('forwardPlot', traces, {
+                height: 500, autosize: true,
+                paper_bgcolor: PAPER_BG, plot_bgcolor: PAPER_BG,
+                font: PLOT_FONT,
+                margin: { l: 60, r: 20, t: 30, b: 80 },
+                title: { text: 'Forward pass: input → hidden → output (ReLU applied)', font: { size: 16, family: 'Space Grotesk, sans-serif', color: '#eae7df' } },
+                barmode: 'group',
+                legend: { orientation: 'h', y: -0.25, font: { size: 11 } },
+                xaxis: { gridcolor: AXIS_GRID, zerolinecolor: AXIS_GRID, color: '#8fa0a8', tickangle: -20 },
+                yaxis: { title: 'activation', gridcolor: AXIS_GRID, zerolinecolor: 'rgba(255,255,255,0.4)', color: '#8fa0a8' }
+            }, { displayModeBar: false, responsive: true });
+            document.getElementById('forwardPlot')._initialized = true;
+        } else {
+            // Update traces
+            Plotly.restyle('forwardPlot', {
+                y: [traces[0].y, traces[1].y, traces[2].y]
+            }, [0, 1, 2]);
+        }
+        updateExplanation();
+    }
+
+    document.getElementById('aSlider').addEventListener('input', e => {
+        inputA = e.target.value / 100;
+        document.getElementById('aVal').textContent = inputA.toFixed(2);
+        updatePlot();
+    });
+    document.getElementById('bSlider').addEventListener('input', e => {
+        inputB = e.target.value / 100;
+        document.getElementById('bVal').textContent = inputB.toFixed(2);
+        updatePlot();
+    });
+    document.getElementById('asymSlider').addEventListener('input', e => {
+        asym = e.target.value / 100;
+        document.getElementById('asymVal').textContent = asym.toFixed(2);
+        updatePlot();
+    });
+
+    // Initialize
+    updatePlot();
+
+    window.addEventListener('resize', () => {
+        Plotly.Plots.resize(document.getElementById('forwardPlot'));
+    });
+</script>
+</body>
+</html>
