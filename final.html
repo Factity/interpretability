@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRAM — Gradient‑Routed Auxiliary Modules (notes)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #000;
+      color: #eee;
+      font-family: 'Kalam', cursive, sans-serif;
+      font-size: 1.1rem;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 10px;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 400;
+      margin: 2em 0 0.5em;
+      line-height: 1.3;
+    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.6rem; border-bottom: 1px solid #333; padding-bottom: 0.2em; }
+    h3 { font-size: 1.3rem; }
+    hr {
+      border: 0;
+      border-top: 1px solid #333;
+      margin: 2em 0;
+    }
+    a { color: #8ab4f8; }
+    img {
+      max-width: 100%;
+      border: 1px solid #444;
+      margin: 1em 0;
+      display: block;
+      border-radius: 4px;
+    }
+    pre {
+      background: #111;
+      border: 1px solid #333;
+      padding: 10px 12px;
+      overflow-x: auto;
+      margin: 1em 0;
+      border-radius: 4px;
+      font-size: 0.8rem;          /* smaller text */
+      line-height: 1.4;          /* tighter lines */
+    }
+    pre code {
+      font-family: monospace;
+      font-size: inherit;        /* inherit the smaller size */
+    }
+    table {
+      border-collapse: collapse;
+      margin: 1.5em 0;
+      width: 100%;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #1a1a1a;
+      font-weight: 400;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .toggle-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Kalam', cursive;
+      z-index: 999;
+    }
+    body.light {
+      background-color: #fff;
+      color: #222;
+    }
+    body.light a { color: #1a0dab; }
+    body.light img { border-color: #ccc; }
+    body.light pre { background: #f5f5f5; border-color: #ccc; color: #333; }
+    body.light th { background: #eee; color: #222; }
+    body.light table, body.light th, body.light td { border-color: #ccc; }
+    body.light .toggle-btn { background: #eee; color: #222; border-color: #ccc; }
+    body.light hr { border-top-color: #ddd; }
+
+
+  /* Additional classes for the GRAM report */
+  .subtitle {
+    color: #8b949e;
+    margin-bottom: 32px;
+    font-size: 1rem;
+  }
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    color: #8b949e;
+    font-size: 13px;
+  }
+  .prompt-pre {
+    margin-bottom: 32px;
+  }
+
+  /* Section-based comparison styles */
+  .comparison-section {
+    border: 1px solid #444;
+    border-radius: 4px;
+    margin: 1.5em 0;
+    overflow: hidden;
+  }
+  .section-header {
+    background: #1a1a1a;
+    padding: 16px 20px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .section-modules {
+    flex: 1;
+    min-width: 220px;
+  }
+  .section-modules .module-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  .section-modules .module-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .section-stats {
+    color: #8b949e;
+    font-size: 12px;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+  .section-body {
+    padding: 16px 20px;
+    font-family: SF Mono, Monospace, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    border-bottom: 1px solid #30363d;
+  }
+  .section-body:last-child {
+    border-bottom: none;
+  }
+  body.light .comparison-section {
+    border-color: #ccc;
+  }
+  body.light .section-header {
+    background: #eee;
+    color: #222;
+    border-bottom-color: #ccc;
+  }
+  body.light .section-body {
+    border-bottom-color: #ddd;
+    color: #222;
+  }
+  body.light .section-stats {
+    color: #666;
+  }
+
+  </style>
+</head>
+<body>
+  <button class="toggle-btn" id="themeToggle">☀️ light</button>
+  <main>
+
+    <h1>GRAM — One Model That Can Forget on Command</h1>
+    <p>I got the paper code and the blog post related to the work from ae studio and anthropic.</p>
+    <p>The author talks about the duality of ai use how it can be used maliciously. The talk about all the consequences of restricting model access and the need for training separate models and how it is not possible when giving access to labs working on bio, nuclear, cyber capabilities. His argument goes like this If a bio lab wants to develop a drug they need top tier model capabilities which can also be used to make bio weapons. Now training and serving separate models would be the gold standard but it is prohibitively expensive. To address this issue the have built gradient routed auxiliary modules gram for short. lets see how they have designed these.</p>
+    <p>a pretraining method that adds modules to a neural network and selectively updates them to induce specialization.</p>
+    <p><img src="Pasted image 20260805095701.png" alt="Pasted image 20260805095701.png"></p>
+    <p>According to the experiments conducted by the lab it shows that the model is much more resistant to changes and shown to be more robust than unlearning mechanisms and fine tuning mechanisms.  The say one of the major advantages of this approach is that this method scales very well.</p>
+    <p>They talk about an alternative approach to deploying N separate models in N different deployment environments. The method is model branching: train a base model on filtered data then split into separate variants by fine tuning each on different dual use capability.</p>
+    <p><img src="Pasted image 20260805100927.png" alt="Pasted image 20260805100927.png"></p>
+    <p>Even with the above method we have serve them separately and lose out on most the capabilities that are learned during the pretraining at scale.</p>
+
+    <h2>How do they intend to build the GRAM model?</h2>
+    <p>Only in a single training run they intend to create multiple capability training profiles. By augmenting the MLP layers of a dense transformer with several smaller MLP modules. Then selectively enables forward and backward passes for different modules based on the data in the current training batch by directing capability specific updates to corresponding modules. During the inference they switch modules which selectively removes certain capabilities. According to their experiments that this method is vastly better than the post hoc unlearning in resisting malicious fine tuning.</p>
+
+    <h3>What did the GRAM use?</h3>
+    <ul>
+      <li>Domain specific modules</li>
+      <li>data dependent gradient selective updates</li>
+      <li>Separate optimization process for parameter subsets</li>
+    </ul>
+
+    <h3>What are approaches they are comparing this against?</h3>
+    <ul>
+      <li>data filtering</li>
+      <li>model branching</li>
+      <li>post hoc unlearning</li>
+    </ul>
+
+    <hr>
+
+    <h2>Background on how they have designed the engineering</h2>
+    <p>They took $D = \{ D_1, \dots, D_N \}$ be the set of datasets and every set other than the first is the auxiliary capability dataset and $D_1$ is the general purpose data set and they also took a capability profile. In this first one being the base or the retain set and the forget set being $F = \{ 2,\dots,N \}$ as the auxiliaries to restrict.</p>
+    <p>The validation cross entropy loss is defined to be $\ell(M,D_{i})$.</p>
+    <p><img src="Pasted image 20260805103225.png" alt="Pasted image 20260805103225.png"></p>
+
+    <h3>Compute ratio metric</h3>
+    <p>How do we compare the amount of training compute required for the different modules specified to do this they have introduced a metric called as compute ratio metric.</p>
+    <p>Definition: Let $M_{BL}$ denote a standard transformer block with dense MLP block trained on all the datasets $D_{all} = \bigcup_{i=1}^N D_i$. For each dataset they use a monotonic continuous power law learning curve $L_i(s)$ that maps baseline training step $s$ to baseline validation cross entropy loss at that step.</p>
+    <p>$$CR(M, D_i) = \frac{L_i^{-1}\big(\ell(M, D_i)\big)}{L_i^{-1}\big(\ell(M_{BL}, D_i)\big)}$$</p>
+    <p>A compute ratio of $r$ indicates that the model achieves a loss equivalent to the baseline after a fraction $r$ of the compute.</p>
+
+    <h3>How do we evaluate the results?</h3>
+    <p>For the forget sets lower compute ratios indicate better performance, and higher compute ratios indicate better performance for the core / retain set.</p>
+
+    <hr>
+
+    <h2>Architecture: a modular approach</h2>
+    <p>Now that the metrics are out of the way lets look at how we are going to design the architecture of the model to enable this modular approach !!!</p>
+    <p>So they took a Transformer architecture and augmented each MLP block with smaller auxiliary MLP modules.</p>
+    <p>They are routing it based on data labels rather than per token or using a router.</p>
+    <p><img src="Pasted image 20260805160821.png" alt="Pasted image 20260805160821.png"></p>
+    <p>The core module is almost the same size as the baseline transformer MLP Layer. Each of the auxiliary layer has the small fraction of the parameters of the base module. The intent is that the core module capture the general knowledge and the aux modules capture the specialized knowledge. Here we take the sum of the modules based on which of them are activated.</p>
+    <p>In a standard dense Transformer, each layer has an MLP $f_{\text{mlp}}: \mathbb{R}^d \to \mathbb{R}^d$. GRAM replaces this with a <strong>gateless mixture</strong>:</p>
+    <p>For layer $\ell$, define experts $E_0^{(\ell)}, E_1^{(\ell)}, \dots, E_{N-1}^{(\ell)}$ where:</p>
+    <ul>
+      <li>$E_0^{(\ell)}$ is the <strong>core MLP</strong> with hidden dimension $d_{\text{core}}$.</li>
+      <li>$E_i^{(\ell)}$ for $i \geq 1$ is the auxiliary module for dataset $D_{i+1}$ with hidden dimension $d_{\text{aux}} \ll d_{\text{core}}$.</li>
+    </ul>
+    <p>The layer output for input $x \in \mathbb{R}^{B \times T \times d}$ given forward mask $\mathbf{m}^{\text{fwd}} \in \{0,1\}^N$ is:</p>
+    <p>$$\text{MoE}(x; \mathbf{m}^{\text{fwd}}) = \sum_{j=0}^{N-1} m^{\text{fwd}}_j \cdot E_j^{(\ell)}(x)$$</p>
+
+    <h2>Gradient Routing: how the training works</h2>
+    <p>So you might be wondering if this is the case how should the gradients be updated how exactly the training process happens?</p>
+    <p>They used a method called as gradient routing for this. The forward pass depends on the dataset and the gradient updates over on the disjoint subsets as shown in the figure.</p>
+    <p>They picked 3 different metrics to decide which of the modules be active how they should be trained. They are</p>
+    <ul>
+      <li>$p_{\text{as}}$ — Auxiliary spread (probability with which the core module is updated in backward pass)</li>
+      <li>$p_{\text{af}}$ — Auxiliary factor (decides which aux module is selected)</li>
+      <li>$p_{\text{cr}}$ — Core robustness (probability with which a random aux module gets activated)</li>
+    </ul>
+
+    <h3>Training the core batches</h3>
+    <p>When training the core batches they took the dataset $D_1$ which is general purpose and trained it while activating one aux module with a probability of $p_{\text{cr}}$ in the forward pass. In the backward pass they just updated everything normally using the adamw optimizer.<br>
+    Sample a batch $b \sim D_1$. With probability $p_{\text{cr}}$, sample a random auxiliary index $k \sim \text{Uniform}\{2, \dots, N\}$.</p>
+    <p><strong>Forward mask:</strong></p>
+    <p>$$m^{\text{fwd}}_j = \begin{cases}
+    1 & j = 0 \quad (\text{core always active})\\
+    1 & j = k \quad \text{with prob. } p_{\text{cr}} \\
+    0 & \text{otherwise}
+    \end{cases}$$</p>
+    <p><strong>Backward mask:</strong></p>
+    <p>$$m^{\text{bck}}_j = \begin{cases}
+    1 & j = 0 \quad (\text{core always updated})\\
+    1 & j = k \quad \text{if } m^{\text{fwd}}_k = 1 \\
+    0 & \text{otherwise}
+    \end{cases}$$</p>
+    <p>All active parameters are updated. The random auxiliary activation forces the core to remain robust to the presence or absence of any single auxiliary.</p>
+
+    <h3>Training on the auxiliary data</h3>
+    <p>When training on the auxiliary data they did a normal forward pass and while the backward pass they updated the core block with $p_{\text{as}}$. The selected aux $i$ is updated normally.</p>
+    <p>Sample a batch $b \sim D_i$.</p>
+    <p><strong>Forward mask:</strong></p>
+    <p>$$m^{\text{fwd}}_j = \begin{cases}
+    1 & j = 0 \quad (\text{core})\\
+    1 & j = i \quad (\text{auxiliary } i)\\
+    0 & \text{otherwise}
+    \end{cases}$$</p>
+    <p><strong>Backward mask:</strong></p>
+    <p>$$m^{\text{bck}}_j = \begin{cases}
+    1 & j = i \quad (\text{auxiliary } i \text{ always updated})\\
+    \mathbb{1}[\text{Bernoulli}(p_{\text{as}})] & j = 0 \quad (\text{core updated with prob. } p_{\text{as}})\\
+    0 & \text{otherwise}
+    \end{cases}$$</p>
+    <p>When $p_{\text{as}} = 0$, the core is frozen and only $\Theta_{\text{aux}}^{(i)}$ learns $D_i$, maximizing modularity. When $p_{\text{as}} = 1$, the core absorbs auxiliary gradients, destroying modularity.</p>
+
+    <hr>
+
+    <h2>Running the experiments</h2>
+    <p>Loading and extracting the data, clone the repository</p>
+    <pre><code class="language-python">!git clone https://github.com/agencyenterprise/modular-pretraining.git</code></pre>
+    <p><strong>Output:</strong></p>
+    <pre><code>Cloning into 'modular-pretraining'...
+...
+Updating files: 100% (8058/8058), done.</code></pre>
+    <p>I will be running only the stories section in the following notebook since the model is 24 million parameters and easy to understand but I will be doing a detailed breakdown of all the code presented in the experiment all architectures, methods used etc</p>
+    <p>To replicate the experiments please run the notebook in the kaggle notebooks with gpu p 100 enabled. Might need to check for torch compatibility; P100 use an old version of torch but if everything goes well you will be able to train the model. One very important note: enable persistence as the session will deactivate if unconnected; keep the tab open for the whole duration. One simple trick is to keep the tab open at the start of the work day; by the end of 10 hours you will be fine. I suggest a 17min timer to check back on the progress and to keep the GPU engaged. One other note: if you are running it on a free tier they will only allow for 30 hours per week so after the run make sure to shutdown the notebook once you are done.</p>
+    <p>When the data is loaded download a copy to your local disk to avoid rerunning the data download process. Save if you can.</p>
+
+    <h2>Code breakdown for the experiment</h2>
+    <p>This will take a while to understand but it is very essential in your learning journey and once you will be able to replicate and run an architecture on your own the rest of it is minor changes and scaffolding around the original code.</p>
+    <p>I will be starting from each of the files and I will pick the execution order I have followed for running the experiment. Each function will be checked with dummy inputs and outputs so you will be able to understand.</p>
+
+    <h3>Step 1: getting the data</h3>
+    <pre><code class="language-python">!python /content/modular-pretraining/src/data/prep_stories.py</code></pre>
+    <p><strong>Output:</strong></p>
+    <pre><code>out_dir: /content/modular-pretraining/src/data/stories
+... (truncated) ...</code></pre>
+
+    <h3>Understanding the script</h3>
+    <p>The format of the json for the stories metadata</p>
+    <p>The file is present in the folder - src/data/stories/metadata.json</p>
+    <pre><code class="language-python">{
+  "&lt;category_name&gt;": {
+    "train": {
+      "total_tokens": &lt;integer&gt;,
+      "example": "&lt;story text ending with [EOS]&gt;"
+    },
+    "test": {
+      "total_tokens": &lt;integer&gt;,
+      "example": "&lt;story text ending with [EOS]&gt;"
+    }
+  },
+  ...
+}</code></pre>
+    <p>The category name is the name of the story type.</p>
+    <p>Moving onto the actual data download and processing stage of the pipeline.</p>
+    <p>The execution code is the file prep_stories.py in the folder src/data/stories.</p>
+
+    <h4>Libraries used</h4>
+    <ul>
+      <li>argparse - for parsing the arguments</li>
+      <li>JSON - for JSON processing</li>
+      <li>os - for directory and file handling</li>
+      <li>shutil - for directory handling</li>
+      <li>pathlib - for fixing/setting path variables</li>
+      <li>typing - for type safety (Any, Dict, List, Literal)</li>
+      <li>collections - for ordered dictionary processing</li>
+      <li>numpy - numerical Python faster processing</li>
+      <li>datasets - for downloading and manipulating large datasets</li>
+      <li>dotenv - for environment file loading</li>
+      <li>huggingface_hub - for downloading the actual dataset</li>
+      <li>tqdm - for interactive progress bar</li>
+      <li>transformers - for the tokenizer (AutoTokenizer)</li>
+      <li>transformers.utils - for logging</li>
+    </ul>
+
+    <pre><code class="language-python">#!/usr/bin/env python
+"""
+Prepare token-level binary shards and write a metadata.json file.
+"""
+import argparse
+import json
+import os
+import shutil
+from pathlib import Path
+from typing import Any, Dict, List, Literal
+from collections import OrderedDict
+
+import numpy as np
+from datasets import Dataset, concatenate_datasets, load_dataset
+from dotenv import load_dotenv
+from huggingface_hub import HfApi, hf_hub_download
+from tqdm.auto import tqdm
+from transformers import AutoTokenizer
+from transformers.utils import logging</code></pre>
+
+    <h4>Setting environment and logging</h4>
+    <pre><code class="language-python">
+logging.set_verbosity(40)
+load_dotenv(Path(__file__).parent.parent.parent / ".env")</code></pre>
+
+    <h4>Function: memmap_write</h4>
+    <p>Takes 3 input arguments, writes a memory‑mapped binary file.</p>
+    <ul>
+      <li>np.memmap creates an array on disk, accessible like a NumPy array in memory.</li>
+      <li>mode="w+" creates/overwrites and allows read/write.</li>
+      <li>shape=(total,) – a 1‑dimensional array with exactly total elements.</li>
+      <li>File contains raw binary data (no headers), just numbers consecutively.</li>
+      <li>tqdm shows a progress bar for large datasets.</li>
+      <li>Each sub‑list a is assigned to the appropriate slice of the memory‑mapped array.</li>
+      <li>Advantage: saves to disk, doesn't load everything into RAM, faster writing.</li>
+    </ul>
+    <pre><code class="language-python">def memmap_write(fname: Path, arr: List[List[int]], dtype: np.dtype = np.uint16) -> None:
+    total = sum(len(a) for a in arr)
+    mmap = np.memmap(fname, dtype=dtype, mode="w+", shape=(total,))
+    idx = 0
+    for a in tqdm(arr, desc="writing", total=len(arr)):
+        mmap[idx : idx + len(a)] = a
+        idx += len(a)
+    mmap.flush()</code></pre>
+<div>
+  <div>
+    <strong>prep function – summary</strong>
+    <p>The prep function loads a dataset, optionally samples it, keeps only the required columns, performs a train-test split, and adjusts column names for clean file naming.</p>
+  </div>
+
+  <div>
+    <strong>Input parameters</strong>
+    <ul>
+      <li><strong>num_proc</strong> – number of processes that will run in parallel</li>
+      <li><strong>tokenizer</strong> – an AutoTokenizer instance</li>
+      <li><strong>max_length</strong> – maximum allowable sequence length</li>
+      <li><strong>length_strategy</strong> – how to handle sequences exceeding max_length (truncate, drop, or none)</li>
+      <li><strong>sample_pct</strong> – fraction of the dataset to use (0 to 1, default 1 = full, 0 = none)</li>
+      <li><strong>column</strong> – name of the category column (e.g., story type)</li>
+    </ul>
+  </div>
+
+  <div>
+    <strong>Variable names</strong>
+    <ul>
+      <li><strong>dset_name</strong> – name of the dataset to load</li>
+      <li><strong>ds</strong> – the loaded dataset (obtained via <code>load_dataset</code>)</li>
+    </ul>
+  </div>
+
+  <div>
+    <strong>Section 1 – detailed workflow</strong>
+    <ol>
+      <li>
+        <strong>Dataset loading:</strong> 
+        The dataset <code>dset_name</code> is loaded into <code>ds</code> using <code>load_dataset</code>.
+      </li>
+      <li>
+        <strong>Optional sampling:</strong> 
+        If <code>sample_pct</code> is less than 1, a random subset of that percentage is taken from the dataset using <code>ds.select(...)</code>.
+      </li>
+      <li>
+        <strong>Column selection:</strong> 
+        Only two columns are retained: <code>story</code> (the story text) and the column named by the input <code>column</code> (the story type).
+      </li>
+      <li>
+        <strong>Train-test split:</strong> 
+        A simple train-test split is performed on the resulting dataset.
+      </li>
+      <li>
+        <strong>Column name normalization:</strong> 
+        The text in the category column is modified for proper file naming (e.g., "Fairy TALES" becomes <code>fairy-tales</code>).
+      </li>
+    </ol>
+  </div>
+</div>
+
+    <h4>Function: prep</h4>
+    <p>Loads dataset, optionally samples, selects columns, splits train/test, normalizes category names, tokenizes, filters by length, maps labels, and returns an OrderedDict keyed by topic.</p>
+    <pre><code class="language-python">
+
+def prep(
+    num_proc: int,
+    tokenizer: AutoTokenizer,
+    max_length: int,
+    column: str,
+    length_strategy: Literal["truncate", "drop", "none"],
+    sample_pct: float = 1.0,
+) -> Dict[str, Dataset]:
+
+#-------------------------------------------------------section 1------------------------------------------------------------------------
+
+    dset_name = "SimpleStories/SimpleStories"
+    ds = load_dataset(dset_name, split="train")
+
+    # Sample dataset if requested
+    if sample_pct < 1.0:
+        sample_size = int(len(ds) * sample_pct)
+        ds = ds.select(range(sample_size))
+        print(f"Sampling {sample_pct*100}% of data: {sample_size} examples")
+
+    #keep only the column "column" plus "story"
+    ds = ds.select_columns([column, "story"])
+
+    splits = ds.train_test_split(test_size=0.1, seed=42) #NOTE test size was 0.01 in OG version
+    train, test = splits["train"], splits["test"]
+
+    train = train.map(lambda ex: {"split": "train"}, num_proc=num_proc)
+    test = test.map(lambda ex: {"split": "test"}, num_proc=num_proc)
+
+    ds = concatenate_datasets([train, test])
+
+    # For the col "column", replace all values in that col with the value in that col replaced with dashes
+    ds = ds.map(lambda ex: {column: str(ex[column]).lower().replace(' ', '-')}, num_proc=num_proc)
+
+    print("Dataset columns:", ds.column_names)
+
+#------------------------------------------------------------section 2 -------------------------------------------------------------------
+
+
+
+
+
+    # --------------------------------------------------------- #
+    # 1. tokenisation                                           #
+    # --------------------------------------------------------- #
+
+    # Build label list
+    labels = sorted(ds.unique(column))
+    print(f"Found {len(labels)} unique {column} values")
+    print(labels)
+
+    def tok_fn(ex: Dict[str, Any]) -> Dict[str, Any]:
+
+        ids = tokenizer.encode(ex["story"], add_special_tokens=False)
+        ids.append(tokenizer.eos_token_id)
+
+        if length_strategy == "truncate" and max_length > 0:
+            ids = ids[:max_length]
+            ids[-1] = tokenizer.eos_token_id
+
+        return {"ids": ids, "len": len(ids)}
+
+    ds = ds.map(tok_fn, num_proc=num_proc)
+
+    # If dropping is enabled, remove stories longer than max_length
+    if length_strategy == "drop" and max_length > 0:
+        ds = ds.filter(lambda ex: ex["len"] <= max_length, num_proc=num_proc)
+
+
+
+#--------------------------------------------------section 3 ------------------------------------------------------------------------------------
+
+
+
+    # --------------------------------------------------------- #
+    # 2. value mapping                                          #
+    # --------------------------------------------------------- #
+
+    # value -> value_id (makes subsetting much faster)
+    ds = ds.map(lambda ex: {f"{column}_id": labels.index(ex[column])}, num_proc=num_proc)
+
+    data = OrderedDict()
+    for label in tqdm(labels, desc=f"Splitting by {column}"):
+        value_id = labels.index(label)
+        subset = ds.filter(lambda ex, value_id=value_id: ex[f"{column}_id"] == value_id, num_proc=num_proc)
+        train = subset.filter(lambda ex: ex["split"] == "train", num_proc=num_proc)
+        test = subset.filter(lambda ex: ex["split"] == "test", num_proc=num_proc)
+        data[label] = {
+            "train": train,
+            "test": test,
+        }
+
+    return data
+
+    ...
+    return data</code></pre>
+
+    <h4>Function: write</h4>
+    <p>Writes binary shards and metadata.json.</p>
+    <div>
+  <strong>Section 2 – writing metadata to JSON</strong>
+  <p>After processing the dataset, a metadata dictionary is constructed and saved to <code>metadata.json</code>.</p>
+  <p>The metadata file contains the following fields:</p>
+  <ul>
+    <li><strong>total_tokens_train</strong> – total number of tokens in the training split</li>
+    <li><strong>total_tokens_test</strong> – total number of tokens in the test split</li>
+    <li><strong>tokenizer</strong> – identifier of the tokenizer (as provided in the input)</li>
+    <li><strong>max_length</strong> – maximum sequence length (as defined)</li>
+    <li><strong>column</strong> – name of the category column (as defined)</li>
+    <li><strong>labels</strong> – list of unique class labels (categories)</li>
+    <li><strong>length_strategy</strong> – the chosen length handling strategy (truncate / drop / none)</li>
+  </ul>
+  <p>Using the output path, the dictionary is written to a file named <code>metadata.json</code> in write mode (<code>+w</code>), allowing verification that all categories are saved correctly.</p>
+</div>
+    <pre><code class="language-python">
+
+def write(
+    datasets: Dict[str, Dataset],
+    column: str,
+    out_dir: Path,
+    max_length: int,
+    tokenizer_name: str,
+    tokenizer: AutoTokenizer,
+    length_strategy: Literal["truncate", "drop", "none"],
+) -> None:
+    """Write datasets to binary files and collect metadata."""
+
+
+
+#----------------------------------------------------------section 1 -------------------------------------------------------------------------
+    meta: dict[str, Any] = {}
+    total_tokens_train = 0
+    total_tokens_test = 0
+    labels = sorted(list(datasets.keys()))
+
+    for label, splits in datasets.items():
+
+        print("label", label)
+        print("splits", splits)
+
+        meta[label] = {
+            "train": {},
+            "test": {},
+        }
+
+        for split in ["train", "test"]:
+
+            subset = splits[split]
+            out_path = out_dir / f"{label}_{split}.bin"
+            if out_path.exists():
+                os.remove(out_path)
+
+            # write tokens
+            memmap_write(
+                out_path,
+                subset["ids"],
+                np.uint16,
+            )
+
+            # ---------- per‑split statistics ----------
+            total_tokens = int(np.sum(subset["len"]))
+            example_text = tokenizer.decode(subset[-1]["ids"], skip_special_tokens=False)
+
+            meta[label][split] = {
+                "total_tokens": total_tokens,
+                "example": example_text,
+            }
+
+            if split == "train":
+                total_tokens_train += total_tokens
+            else:
+                total_tokens_test += total_tokens
+
+
+#---------------------------------------------------- section 2 ---------------------------------------------------------------------------------
+
+    # ---------- global statistics ----------
+    meta["all"] = {
+        "total_tokens_train": total_tokens_train,
+        "total_tokens_test": total_tokens_test,
+        "tokenizer": tokenizer_name,
+        "vocab_size": len(tokenizer),
+        "max_length": max_length,
+        "column": column,
+        "labels": labels,
+        "length_strategy": length_strategy,
+    }
+
+    # ---------------------------------------------------- #
+    # dump metadata.json                                   #
+    # ---------------------------------------------------- #
+    with open(out_dir / "metadata.json", "w") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False, default=str)
+
+...
+    with open(out_dir / "metadata.json", "w") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False, default=str)</code></pre>
+
+    <h4>Function: run</h4>
+    <p>Main function: handles symlinks, download/upload bins, tokenizer loading, calls prep and write.</p>
+    <div>
+  <strong>run function – overview</strong>
+  <p>
+    This is the main entry point where the data processing pipeline executes.
+    The pipeline is nearly identical across the experiment datasets (fineweb, stories, papers) with only minor adjustments.
+    The papers dataset is notable – it contains categories for <em>nuclear</em>, <em>cyber</em>, and <em>bioweapons</em>, but training might require an 800M parameter model.
+    Details on how to run the experiment are provided at the end of the notebook.
+  </p>
+
+  <div>
+    <strong>Input parameters</strong>
+    <ul>
+      <li><strong>out_dir</strong> – directory where output files will be saved</li>
+      <li><strong>num_proc</strong> – number of processes to run</li>
+      <li><strong>column</strong> – category column name (as defined earlier)</li>
+      <li><strong>max_length</strong> – maximum sequence length (as defined earlier)</li>
+      <li><strong>length_strategy</strong> – how to handle sequences exceeding max_length (truncate / drop / none)</li>
+      <li><strong>tokenizer_name</strong> – name of the tokenizer to use (as defined earlier)</li>
+      <li><strong>download_bins</strong> – boolean flag that enables downloading of bin files</li>
+      <li><strong>upload_bins</strong> – boolean flag that enables uploading of bin files</li>
+      <li><strong>sample_pct</strong> – fraction of the dataset to display/process (default is 1 = full, lower values show a sample)</li>
+    </ul>
+  </div>
+</div>
+    <pre><code class="language-python">
+      
+      
+      
+      
+# --------------------------------------------------------------------------- #
+# main preparation sequence                                                   #
+# --------------------------------------------------------------------------- #
+
+
+def run(
+        out_dir: Path | None,
+        num_proc: int,
+        column: str,
+        max_length: int,
+        length_strategy: str,
+        tokenizer_name: str,
+        download_bins: bool,
+        upload_bins: bool,
+        sample_pct: float = 1.0,
+    ) -> None:
+
+    default_out_dir = Path(__file__).parent / "stories"
+    if out_dir is None:
+        out_dir = default_out_dir
+
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if out_dir.resolve() != default_out_dir.resolve():
+
+        if default_out_dir.is_symlink() or default_out_dir.exists():
+            default_out_dir.unlink() if default_out_dir.is_symlink() else shutil.rmtree(default_out_dir)
+        default_out_dir.parent.mkdir(parents=True, exist_ok=True)
+        default_out_dir.symlink_to(out_dir.resolve())
+        print(f"Symlinked {default_out_dir} -> {out_dir.resolve()}")
+
+    print("out_dir:", out_dir)
+
+    # Get HF token from environment
+    hf_token = os.getenv("HF_TOKEN", None)
+    repo_id = "erol-AE/GR-MoE"
+    subfolder = "stories"
+
+    # Download bins if requested
+    if download_bins:
+        print(f"Downloading .bin files from {repo_id}/{subfolder}...")
+        api = HfApi(token=hf_token)
+
+        # List all files in the subfolder
+        try:
+            repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset", token=hf_token)
+            bin_files = [f for f in repo_files if f.startswith(subfolder) and f.endswith('.bin')]
+
+            # Also download metadata.json
+            metadata_files = [f for f in repo_files if f.startswith(subfolder) and f.endswith('metadata.json')]
+
+            all_files = bin_files + metadata_files
+
+            if not all_files:
+                print(f"No .bin or metadata.json files found in {repo_id}/{subfolder}")
+            else:
+                for file_path in tqdm(all_files, desc="Downloading files"):
+                    hf_hub_download(
+                        repo_id=repo_id,
+                        filename=file_path,
+                        repo_type="dataset",
+                        token=hf_token,
+                        local_dir=out_dir.parent,
+                        local_dir_use_symlinks=False,
+                    )
+                    print(f"Downloaded {file_path} to {out_dir / Path(file_path).name}")
+
+                print("Download complete!")
+        except Exception as e:
+            print(f"Error downloading files: {e}")
+            raise
+
+        return
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
+    data = prep(
+        num_proc=num_proc,
+        tokenizer=tokenizer,
+        column=column,
+        max_length=max_length,
+        length_strategy=length_strategy,
+        sample_pct=sample_pct,
+    )
+
+    # Write datasets and metadata
+    write(
+        datasets=data,
+        column=column,
+        out_dir=out_dir,
+        max_length=max_length,
+        tokenizer_name=tokenizer_name,
+        tokenizer=tokenizer,
+        length_strategy=length_strategy,
+    )
+
+    print("Done - binary shards + metadata.json written to", out_dir)
+
+    # Upload bins if requested
+    if upload_bins:
+        print(f"Uploading .bin files to {repo_id}/{subfolder}...")
+        api = HfApi(token=hf_token)
+
+        # Ensure repo exists (will not error if it already exists)
+        try:
+            api.create_repo(repo_id=repo_id, token=hf_token, exist_ok=True, repo_type="dataset")
+            print(f"Dataset repository {repo_id} ready")
+        except Exception as e:
+            print(f"Note: Could not create/verify repo (it may already exist): {e}")
+
+        # Find all .bin files and metadata.json in out_dir
+        bin_files = list(out_dir.glob("*.bin"))
+        metadata_file = out_dir / "metadata.json"
+
+        files_to_upload = bin_files.copy()
+        if metadata_file.exists():
+            files_to_upload.append(metadata_file)
+
+        if not files_to_upload:
+            print(f"No .bin or metadata.json files found in {out_dir} to upload")
+        else:
+            for file_path in tqdm(files_to_upload, desc="Uploading files"):
+                try:
+                    api.upload_file(
+                        path_or_fileobj=str(file_path),
+                        path_in_repo=f"{subfolder}/{file_path.name}",
+                        repo_id=repo_id,
+                        repo_type="dataset",
+                        token=hf_token,
+                    )
+                    print(f"Uploaded {file_path.name} to {repo_id}/{subfolder}")
+                except Exception as e:
+                    print(f"Error uploading {file_path.name}: {e}")
+                    raise
+
+            print("Upload complete!")
+...</code></pre>
+
+    <h4>CLI arguments</h4>
+
+    <div>
+  <strong>CLI arguments (argparse)</strong>
+  <p>The <code>run</code> function is invoked via command line, using <code>argparse</code> to receive the following parameters. These directly control the data preparation process described earlier.</p>
+
+  <div style="margin-top: 10px;">
+    <strong>Parser arguments</strong>
+    <ul>
+      <li><code>--out_dir</code><br>Directory where the binary <code>.bin</code> files and <code>metadata.json</code> will be written.</li>
+      <li><code>--num_proc</code><br>Number of parallel processes used for tokenization and filtering.</li>
+      <li><code>--column</code><br>Name of the category column (e.g., "topic" for stories).</li>
+      <li><code>--max_length</code><br>Maximum sequence length (in tokens).</li>
+      <li><code>--length_strategy</code><br>Handling strategy for sequences exceeding <code>max_length</code>: <code>truncate</code>, <code>drop</code>, or <code>none</code>.</li>
+      <li><code>--tokenizer</code><br>Name or path of the Hugging Face tokenizer (e.g., <code>EleutherAI/gpt-neo-125M</code>).</li>
+      <li><code>--download_bins</code><br>Boolean flag – if set, the script downloads pre‑existing binary shards from Hugging Face Hub.</li>
+      <li><code>--upload_bins</code><br>Boolean flag – if set, the freshly created binary files are uploaded to Hugging Face Hub.</li>
+      <li><code>--sample</code><br>Fraction of the dataset to actually process (0–1). A value less than 1 reduces the data volume for quick tests.</li>
+    </ul>
+  </div>
+
+  <p style="margin-top: 15px;">
+    These arguments are parsed at the bottom of <code>prep_stories.py</code> (and similarly in <code>prep_fineweb.py</code>, <code>prep_papers.py</code>) and passed directly to the <code>run</code> function. The <code>run</code> function then calls <code>prep</code> to tokenize and split the data, followed by <code>write</code> to save the binary shards and metadata.
+  </p>
+</div>
+    <pre><code class="language-python">
+
+# --------------------------------------------------------------------------- #
+# CLI                                                                         #
+# --------------------------------------------------------------------------- #
+
+if __name__ == "__main__":
+
+    ap = argparse.ArgumentParser("Prepare simple stories")
+    ap.add_argument("--out_dir", default=None, help="directory to write .bin files")
+    ap.add_argument("--num_proc", type=int, default=20)
+    ap.add_argument("--column", type=str, default="topic")
+    ap.add_argument("--max_length", type=int, default=-1)
+    ap.add_argument("--length_strategy", type=str, default="none", choices=["truncate", "drop", "none"])
+    ap.add_argument("--tokenizer", type=str, default="SimpleStories/SimpleStories-1.25M")
+    ap.add_argument("--download_bins", action="store_true")
+    ap.add_argument("--upload_bins", action="store_true")
+    ap.add_argument("--sample", type=float, default=1.0, help="Fraction of data to use (0.0-1.0), e.g., 0.01 for 1%%")
+    args = ap.parse_args()
+
+    run(
+        out_dir=args.out_dir,
+        num_proc=args.num_proc,
+        column=args.column,
+        max_length=args.max_length,
+        length_strategy=args.length_strategy,
+        tokenizer_name=args.tokenizer,
+        download_bins=args.download_bins,
+        upload_bins=args.upload_bins,
+        sample_pct=args.sample,
+    )</code></pre>
+
+    <hr>
+
+    <h2>Designing the core training model of the experiment </h2>
+
+
+<section class="cell markdown"><h3>Cell 1 · Modules utilised</h3>
+<div class="markdown">
+  <p>
+    This cell lists the Python packages and libraries used across the notebook, each serving a specific role in the modular pre‑training pipeline:
+  </p>
+  <ul>
+    <li><strong>json</strong> – Parses the token‑count metadata file (<code>metadata.json</code>) that summarises dataset statistics.</li>
+    <li><strong>random</strong> – Seeded random number generation for reproducibility in building the training schedule.</li>
+    <li><strong>struct</strong> – Not directly called in this snippet; often used when reading binary formats (legacy).</li>
+    <li><strong>pathlib</strong> – Provides platform‑independent filesystem path handling (e.g., <code>DATA_DIR</code>).</li>
+    <li><strong>typing</strong> – Optional type hints (<code>List</code>, <code>Optional</code>, <code>Tuple</code>, <code>Dict</code>) for better code clarity.</li>
+    <li><strong>numpy</strong> – Efficient array operations: reading <code>.bin</code> files via <code>np.memmap</code> and concatenating token shards.</li>
+    <li><strong>torch / torch.nn / torch.nn.functional</strong> – The PyTorch deep learning framework for defining, training, and evaluating the GRAM model.</li>
+    <li><strong>torch.utils.data.Dataset, DataLoader</strong> – Builds batched, shuffled iterators over the binary token datasets.</li>
+  </ul>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 2 · Imports</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>import json
+import random
+import struct
+from pathlib import Path
+from typing import List, Optional, Tuple, Dict
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 3 · Experiment environment and configuration</h3>
+<div class="markdown">
+  <p>
+    The experiments were run on Kaggle GPU instances. Data preprocessing and <code>.bin</code> file creation used a P100 GPU; all subsequent training and inference steps used T4 GPUs. The configuration constants define the entire model architecture, training procedure, and data handling.
+  </p>
+  <p><strong>Configuration variables:</strong></p>
+  <ul>
+    <li><code>DATA_DIR</code> – Path to the directory containing the tokenised <code>.bin</code> files, one per topic and split (<code>topic_train.bin</code>, <code>topic_test.bin</code>).</li>
+    <li><code>AUX_TOPICS</code> – The three specialised topics (“alien-encounters”, “dinosaurs”, “magical-objects”) used as auxiliary expert modules during training.</li>
+    <li><code>VOCAB_SIZE</code> – Size of the token vocabulary (4096). The embedding matrix has this many rows.</li>
+    <li><code>CTX_LEN</code> – Maximum context length (256 tokens) that the model can attend to at once. Sequences are chunked into non‑overlapping segments of this length.</li>
+    <li><code>NUM_LAYERS</code> – Number of transformer blocks stacked in the model.</li>
+    <li><code>NUM_HEADS</code> – Total number of query heads in the grouped‑query attention.</li>
+    <li><code>NUM_KV_HEADS</code> – Number of key/value heads (2), used for grouped‑query attention to reduce memory.</li>
+    <li><code>EMBED_DIM</code> – Dimensionality of token embeddings and hidden states (512).</li>
+    <li><code>MLP_DIM</code> – Total feed‑forward dimension of the Mixture‑of‑Experts (2048).</li>
+    <li><code>CORE_MLP_PRC</code> / <code>AUX_MLP_PRC</code> – Fraction of <code>MLP_DIM</code> allocated to the core expert (0.95) and each auxiliary expert (0.05). This keeps the core expert large while the auxiliary experts remain small and efficient.</li>
+    <li><code>BATCH_SIZE</code> – Number of sequences per batch (64).</li>
+    <li><code>LR</code> – Base learning rate for AdamW (3e‑4).</li>
+    <li><code>WARMUP</code> – Number of warm‑up steps (200) used for learning‑rate scheduling (scheduler not shown but referenced).</li>
+    <li><code>MAX_STEPS</code> – Total training iterations (5000).</li>
+    <li><code>EVAL_EVERY</code> – Evaluation frequency (every 500 steps).</li>
+    <li><code>GRAD_CLIP</code> – Maximum gradient norm for clipping (1.0).</li>
+    <li><code>DEVICE</code> – Automatically selects <code>cuda</code> if available, otherwise <code>cpu</code>.</li>
+    <li><code>SEED</code> – Global random seed for reproducibility (42).</li>
+  </ul>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 4 · Configuration</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code># =============================================================================
+# CONFIGURATION
+# =============================================================================
+DATA_DIR = Path(&quot;/kaggle/working/modular-pretraining/src/data/stories&quot;)
+AUX_TOPICS = [&quot;alien-encounters&quot;, &quot;dinosaurs&quot;, &quot;magical-objects&quot;]
+VOCAB_SIZE = 4096
+CTX_LEN = 256
+
+# Model
+NUM_LAYERS = 8
+NUM_HEADS = 8
+NUM_KV_HEADS = 2
+EMBED_DIM = 512
+MLP_DIM = 2048
+CORE_MLP_PRC = 0.95
+AUX_MLP_PRC = 0.05
+
+# Training
+BATCH_SIZE = 64
+LR = 3e-4
+WARMUP = 200
+MAX_STEPS = 5000
+EVAL_EVERY = 500
+GRAD_CLIP = 1.0
+DEVICE = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+SEED = 42</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 5 · Core data construction</h3>
+<div class="markdown">
+  <p>
+    All story topics except the three auxiliary topics are merged into a single “core” dataset. The function <code>discover_topics</code> scans the data directory for <code>*_train.bin</code> files and extracts topic names. <code>merge_core</code> then concatenates the token arrays of all non‑auxiliary topics for both train and test splits, writing <code>core_train.bin</code> and <code>core_test.bin</code>.
+  </p>
+  <p>
+    Acknowledged trade‑off: merging creates a large core corpus that may contain repeated names or motifs, introducing a distributional bias. The model might over‑represent those patterns in unrelated contexts. Given limited compute, this approach favours coherent core generations at the expense of perfectly balanced data.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 6 · Discover topics and merge core</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code># =============================================================================
+# STEP 1: DISCOVER TOPICS &amp; MERGE CORE
+# =============================================================================
+def discover_topics(data_dir: Path) -&gt; List[str]:
+    &quot;&quot;&quot;Find all topic names from *_train.bin files.&quot;&quot;&quot;
+    return sorted({f.stem.replace(&quot;_train&quot;, &quot;&quot;)
+                   for f in data_dir.glob(&quot;*_train.bin&quot;)})
+
+def merge_core(data_dir: Path, aux_topics: List[str]):
+    &quot;&quot;&quot;Concatenate all non-aux topics into core_train.bin and core_test.bin.&quot;&quot;&quot;
+    all_topics = discover_topics(data_dir)
+    core_topics = [t for t in all_topics if t not in aux_topics]
+    print(f&quot;Discovered {len(all_topics)} total topics.&quot;)
+    print(f&quot;AUX ({len(aux_topics)}): {aux_topics}&quot;)
+    print(f&quot;CORE ({len(core_topics)}): {core_topics[:5]}... (and {len(core_topics)-5} more)&quot;)
+
+    for split in [&quot;train&quot;, &quot;test&quot;]:
+        out_path = data_dir / f&quot;core_{split}.bin&quot;
+        if out_path.exists():
+            print(f&quot;{out_path} already exists — skipping merge.&quot;)
+            continue
+        chunks = []
+        for topic in core_topics:
+            src = data_dir / f&quot;{topic}_{split}.bin&quot;
+            if src.exists():
+                chunks.append(np.fromfile(str(src), dtype=np.uint16))
+        if not chunks:
+            raise FileNotFoundError(f&quot;No non-aux {split} shards found.&quot;)
+        merged = np.concatenate(chunks)
+        merged.tofile(str(out_path))
+        print(f&quot;Wrote {out_path} ({len(merged):,} tokens | {len(merged)/1e6:.2f}M)&quot;)
+
+merge_core(DATA_DIR, AUX_TOPICS)</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 7 · Data loading</h3>
+<div class="markdown">
+  <p>
+    The <code>BinShardDataset</code> class wraps a memory‑mapped binary file (<code>np.memmap</code>) containing 16‑bit unsigned integer token IDs. It yields non‑overlapping chunks of length <code>ctx_len</code> as input‑target pairs:
+  </p>
+  <ul>
+    <li><strong>Input:</strong> tokens <code>[i : i+ctx_len]</code></li>
+    <li><strong>Target:</strong> tokens <code>[i+1 : i+ctx_len+1]</code> (shifted by one for next‑token prediction)</li>
+  </ul>
+  <p>
+    The indices list precomputes start positions with a stride equal to <code>ctx_len</code>, ensuring no overlap between samples. <code>build_loaders</code> creates a dictionary of <code>DataLoader</code> objects for every combination of label (core + aux topics) and split (train/test). Train loaders are shuffled; test loaders are not. <code>num_workers=2</code> enables multi‑process data loading, and <code>pin_memory=True</code> speeds up GPU transfers.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 8 · Binary shard dataset and loaders</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code># =============================================================================
+# DATA LOADING
+# =============================================================================
+class BinShardDataset(Dataset):
+    def __init__(self, bin_path: Path, ctx_len: int = 256):
+        self.ctx_len = ctx_len
+        self.tokens = np.memmap(str(bin_path), dtype=&quot;uint16&quot;, mode=&quot;r&quot;)
+        self.num_tokens = len(self.tokens)
+        self.indices = list(range(0, self.num_tokens - ctx_len, ctx_len))
+        if not self.indices:
+            raise ValueError(f&quot;Not enough tokens in {bin_path} for ctx_len={ctx_len}&quot;)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        i = self.indices[idx]
+        chunk = self.tokens[i:i + self.ctx_len + 1].astype(np.int64)
+        return torch.from_numpy(chunk[:-1]), torch.from_numpy(chunk[1:])
+
+def build_loaders(data_dir: Path, aux_topics: List[str], ctx_len: int, batch_size: int):
+    labels = [&quot;core&quot;] + aux_topics
+    loaders = {}
+    for split in [&quot;train&quot;, &quot;test&quot;]:
+        for lab in labels:
+            path = data_dir / f&quot;{lab}_{split}.bin&quot;
+            if not path.exists():
+                raise FileNotFoundError(f&quot;Missing shard: {path}&quot;)
+            ds = BinShardDataset(path, ctx_len)
+            loaders[f&quot;{lab}_{split}&quot;] = DataLoader(
+                ds, batch_size=batch_size, shuffle=(split == &quot;train&quot;),
+                drop_last=True, pin_memory=True, num_workers=2
+            )
+    return loaders, labels</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 9 · Simplifying the experiment</h3>
+<div class="markdown">
+  <p>
+    The original repository contained multiple configuration files, experiments with different numbers of auxiliary experts, and separate training scripts. To make the demonstration self‑contained, this notebook collapses everything into a single training run (the “3‑aux” configuration) followed by an inference demo that shows module switching between core and auxiliary experts.
+  </p>
+</div>
+</section>
+
+<section class="cell markdown"><h3>Cell 10 · Gradient freezing</h3>
+<div class="markdown">
+  <p>
+    <code>freeze_module</code> is a key utility for selective backpropagation. When <code>do_freeze=True</code>:
+  </p>
+  <ol>
+    <li>All parameters of the module are detached (<code>.detach()</code>), breaking the gradient chain.</li>
+    <li>The detached parameters and original buffers are stored in a dictionary.</li>
+    <li>A callable is returned that uses <code>torch.func.functional_call</code> to perform the module’s forward pass with the detached parameters, so no gradients are accumulated for that module.</li>
+  </ol>
+  <p>
+    When <code>do_freeze=False</code>, the original module is returned unchanged. This allows the MoE and transformer blocks to selectively update only the experts that are active during a training step (governed by <code>bck_mask</code>), while the rest of the network remains frozen and contributes no gradient.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 11 · Freeze module</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>def freeze_module(module: nn.Module, do_freeze: bool):
+    if not do_freeze:
+        return module
+    params_and_bufs = {
+        **{n: p.detach() for n, p in module.named_parameters()},
+        **{n: b for n, b in module.named_buffers()},
+    }
+    def call(*args, **kwargs):
+        return torch.func.functional_call(module, params_and_bufs, args, kwargs)
+    return call</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 12 · Core MLP and attention blocks</h3>
+<div class="markdown">
+  <p>
+    The following code cell defines two fundamental building blocks:
+  </p>
+  <ul>
+    <li><strong><code>MLP</code></strong> – A standard two‑layer feed‑forward network with GELU activation (tanh approximation). It expands from <code>embed_dim</code> to <code>mlp_dim</code> and projects back. Used inside the mixture‑of‑experts.</li>
+    <li><strong><code>Attention</code></strong> – Implements grouped‑query attention (GQA). Queries are projected to <code>num_heads</code> heads, while keys and values are projected to a smaller number of <code>num_kv</code> heads. Before scaled dot‑product attention, the key/value heads are repeated to match the query heads. Causal masking is applied by default via <code>is_causal=True</code> unless a custom mask is provided.</li>
+  </ul>
+  <p>
+    The use of GQA reduces memory and computation for the key/value projections, which is beneficial when auxiliary experts share the same attention block.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 13 · MLP and grouped‑query attention</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>class MLP(nn.Module):
+    def __init__(self, embed_dim: int, mlp_dim: int):
+        super().__init__()
+        self.c_fc = nn.Linear(embed_dim, mlp_dim, bias=True)
+        self.c_proj = nn.Linear(mlp_dim, embed_dim, bias=True)
+
+    def forward(self, x):
+        return self.c_proj(F.gelu(self.c_fc(x), approximate=&quot;tanh&quot;))
+
+class Attention(nn.Module):
+    def __init__(self, num_heads: int, embed_dim: int, num_kv: int):
+        super().__init__()
+        self.num_heads, self.num_kv = num_heads, num_kv
+        self.head_dim = embed_dim // num_heads
+        self.q_proj = nn.Linear(embed_dim, embed_dim)
+        self.k_proj = nn.Linear(embed_dim, num_kv * self.head_dim)
+        self.v_proj = nn.Linear(embed_dim, num_kv * self.head_dim)
+        self.o_proj = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, x, attn_mask=None):
+        B, T, E = x.shape
+        q = self.q_proj(x).view(B,T,self.num_heads,self.head_dim).transpose(1,2)
+        k = self.k_proj(x).view(B,T,self.num_kv,self.head_dim).transpose(1,2)
+        v = self.v_proj(x).view(B,T,self.num_kv,self.head_dim).transpose(1,2)
+        if self.num_kv != self.num_heads:
+            rep = self.num_heads // self.num_kv
+            k = k.repeat_interleave(rep, dim=1)
+            v = v.repeat_interleave(rep, dim=1)
+        out = F.scaled_dot_product_attention(
+            q, k, v, attn_mask=attn_mask, is_causal=(attn_mask is None)
+        )
+        out = out.transpose(1,2).contiguous().view(B,T,E)
+        return self.o_proj(out)</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 14 · Mixture‑of‑experts method</h3>
+<div class="markdown">
+  <p>
+    The <code>MoE</code> class holds a list of <code>MLP</code> experts: the first expert is the large <strong>core</strong> expert (dimension <code>core_dim</code>), and the remaining ones are the small <strong>auxiliary</strong> experts (dimension <code>aux_dim</code>).
+  </p>
+  <p>
+    In the forward pass:
+ 
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 15 · MoE experts</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>class MoE(nn.Module):
+    def __init__(self, embed_dim: int, num_experts: int, core_dim: int, aux_dim: int):
+        super().__init__()
+        self.experts = nn.ModuleList(
+            [MLP(embed_dim, core_dim)] +
+            [MLP(embed_dim, aux_dim) for _ in range(num_experts - 1)]
+        )
+
+    def forward(self, x, fwd_mask, bck_mask):
+        y = None
+        for i in range(len(self.experts)):
+            w = fwd_mask[i].item()
+            if w &gt; 0:
+                expert = freeze_module(self.experts[i], do_freeze=not bck_mask[i])
+                out = expert(x)
+                if w != 1.0:
+                    out = w * out
+                y = out if y is None else y + out
+        return y</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 16 · Transformer block and GRAM model implementation</h3>
+<div class="markdown">
+  <p>
+    <strong><code>TransformerBlock</code></strong> combines attention and mixture‑of‑experts with pre‑norm RMSNorm. The core attention and normalisation layers can be frozen if the core expert is not being updated (<code>freeze_core = not bck_mask[0]</code>). This ensures that when only an auxiliary expert is trained, the shared attention parameters stay unchanged.
+  </p>
+  <p>
+    <strong><code>GRAMModel</code></strong> assembles the full model:
+  </p>
+  <ul>
+    <li>An embedding layer, <code>NUM_LAYERS</code> transformer blocks, final RMSNorm, and an unembedding (linear) projection to vocabulary size.</li>
+    <li>Initialisation follows a normal distribution with std=0.02, bias zero, and RMSNorm weight of 1.</li>
+    <li>The method <code>get_params(label)</code> returns the parameter groups associated with a given module label. For “core”, this includes the embedding, unembedding, final norm, and all attention/norm parameters across blocks. For an auxiliary label, it returns only the corresponding expert in every block’s MoE. This separates the optimisers so that different modules can be updated independently.</li>
+    <li>The forward pass applies masks; if no masks are given, all modules are active. Loss is standard cross‑entropy (ignoring index −100).</li>
+    <li><code>generate</code> performs autoregressive sampling with temperature and optional top‑k filtering, respecting the module masks.</li>
+  </ul>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 17 · Transformer block and GRAM model</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>class TransformerBlock(nn.Module):
+    def __init__(self, embed_dim, num_heads, num_kv, num_experts, core_dim, aux_dim):
+        super().__init__()
+        self.attn = Attention(num_heads, embed_dim, num_kv)
+        self.moe = MoE(embed_dim, num_experts, core_dim, aux_dim)
+        self.norm_1 = nn.RMSNorm(embed_dim)
+        self.norm_2 = nn.RMSNorm(embed_dim)
+
+    def forward(self, x, fwd_mask, bck_mask):
+        freeze_core = not bck_mask[0].item()
+        a = freeze_module(self.attn, freeze_core)
+        n1 = freeze_module(self.norm_1, freeze_core)
+        n2 = freeze_module(self.norm_2, freeze_core)
+        x = x + a(n1(x))
+        return x + self.moe(n2(x), fwd_mask, bck_mask)
+
+class GRAMModel(nn.Module):
+    def __init__(self, vocab_size, ctx_len, num_layers, num_heads, num_kv,
+                 embed_dim, mlp_dim, core_mlp_prc, aux_mlp_prc, labels):
+        super().__init__()
+        assert labels[0] == &quot;core&quot;
+        self.labels, self.ctx_len = labels, ctx_len
+        align = 64
+        core_dim = round(core_mlp_prc * mlp_dim / align) * align
+        aux_dim = round(aux_mlp_prc * mlp_dim / align) * align
+        self.embed = nn.Embedding(vocab_size, embed_dim)
+        self.norm_f = nn.RMSNorm(embed_dim)
+        self.unembed = nn.Linear(embed_dim, vocab_size)
+        self.blocks = nn.ModuleList([
+            TransformerBlock(embed_dim, num_heads, num_kv, len(labels), core_dim, aux_dim)
+            for _ in range(num_layers)
+        ])
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, (nn.Linear, nn.Embedding)):
+            m.weight.data.normal_(mean=0.0, std=0.02)
+            if getattr(m, &quot;bias&quot;, None) is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.RMSNorm):
+            m.weight.data.fill_(1.0)
+
+    def get_params(self, label):
+        idx = self.labels.index(label)
+        if label == &quot;core&quot;:
+            yield from self.embed.parameters()
+            yield from self.unembed.parameters()
+            yield from self.norm_f.parameters()
+        for block in self.blocks:
+            if label == &quot;core&quot;:
+                yield from block.attn.parameters()
+                yield from block.norm_1.parameters()
+                yield from block.norm_2.parameters()
+            yield from block.moe.experts[idx].parameters()
+
+    def forward(self, tokens, targets=None, fwd_mask=None, bck_mask=None):
+        if fwd_mask is None:
+            fwd_mask = torch.ones(len(self.labels), device=tokens.device)
+        if bck_mask is None:
+            bck_mask = torch.ones(len(self.labels), device=tokens.device).bool()
+        freeze_core = not bck_mask[0].item()
+        h = freeze_module(self.embed, freeze_core)(tokens)
+        for block in self.blocks:
+            h = block(h, fwd_mask, bck_mask)
+        logits = freeze_module(self.unembed, freeze_core)(freeze_module(self.norm_f, freeze_core)(h))
+        loss = None if targets is None else F.cross_entropy(
+            logits.view(-1, logits.size(-1)), targets.reshape(-1), ignore_index=-100
+        )
+        return logits, loss
+
+    @torch.no_grad()
+    def generate(self, tokens, max_new_tokens, fwd_mask, temperature=1.0, top_k=None):
+        self.eval()
+        for _ in range(max_new_tokens):
+            idx_cond = tokens[:, -self.ctx_len:]
+            logits, _ = self.forward(idx_cond, fwd_mask=fwd_mask,
+                                     bck_mask=fwd_mask.bool())
+            logits = logits[:, -1, :] / temperature
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits &lt; v[:, [-1]]] = -float(&quot;Inf&quot;)
+            tokens = torch.cat((tokens, torch.multinomial(F.softmax(logits, -1), 1)), 1)
+        return tokens</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 18 · Training stage of the pipeline</h3>
+<div class="markdown">
+  <p>
+    The training process is controlled by a <strong>schedule</strong> that alternates between core‑only steps and core‑auxiliary combination steps:
+  </p>
+  <ul>
+    <li><code>get_mask</code> converts a list of active labels into a tensor mask.</li>
+    <li><code>build_schedule</code> creates a list of training steps. Half of the core steps (with probability <code>robust_prc=0.5</code>) randomly include one auxiliary expert for the forward mask but only the core expert is updated. The other half are pure core steps (forward and backward both core only). Then, for each auxiliary expert, a block of steps is added where the auxiliary is included forward and only that auxiliary is updated backward. The schedule is shuffled.</li>
+    <li>In <code>train</code>, a separate AdamW optimiser is created for each label using the parameter groups from <code>get_params</code>. For each step, a batch is drawn from the appropriate loader, the forward/backward masks are applied, loss is computed, gradients are clipped, and only the optimisers whose parameters received gradients are stepped. This ensures that the core and each auxiliary module are trained according to the schedule without interference.</li>
+    <li>The model checkpoint is saved as <code>gram_stories_3aux.pt</code>.</li>
+    <li>Evaluation (<code>evaluate</code>) loops over test loaders for core and aux topics, computes loss with the expected masks (core only, or core + the auxiliary), and prints per‑topic perplexity approximations.</li>
+  </ul>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 19 · Masks, schedule, training, and evaluation</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>def get_mask(labels, active, device):
+    m = torch.zeros(len(labels), device=device)
+    for lab in active:
+        m[labels.index(lab)] = 1.0
+    return m
+
+def build_schedule(loaders, labels, aux_labels, robust_prc=0.5):
+    n_core = len(loaders[&quot;core_train&quot;]) // 2
+    min_batches = min(n_core, *(len(loaders[f&quot;{a}_train&quot;]) for a in aux_labels))
+    sched = []
+    for _ in range(min_batches):
+        if random.random() &lt; robust_prc:
+            a = random.choice(aux_labels)
+            sched.append((&quot;core&quot;, (&quot;core&quot;, a), (&quot;core&quot;,)))
+        else:
+            sched.append((&quot;core&quot;, (&quot;core&quot;,), (&quot;core&quot;,)))
+    for a in aux_labels:
+        for _ in range(min_batches):
+            sched.append((a, (&quot;core&quot;, a), (a,)))
+    random.shuffle(sched)
+    return sched
+
+# Training follows the schedule, computes loss, clips gradients, and steps
+# only optimizers whose parameter groups received gradients.
+def train():
+    random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
+    loaders, labels = build_loaders(DATA_DIR, AUX_TOPICS, CTX_LEN, BATCH_SIZE)
+    model = GRAMModel(VOCAB_SIZE, CTX_LEN, NUM_LAYERS, NUM_HEADS, NUM_KV_HEADS,
+                      EMBED_DIM, MLP_DIM, CORE_MLP_PRC, AUX_MLP_PRC, labels).to(DEVICE)
+    opts = {lab: torch.optim.AdamW(list(model.get_params(lab)), lr=LR,
+            fused=(DEVICE == &quot;cuda&quot;)) for lab in labels}
+    schedule = build_schedule(loaders, labels, AUX_TOPICS)
+    iters = {k: iter(v) for k, v in loaders.items()}
+    step = 0
+    while step &lt; MAX_STEPS:
+        random.shuffle(schedule)
+        for dlab, fwd_exps, bck_exps in schedule:
+            if step &gt;= MAX_STEPS: break
+            try: x, y = next(iters[f&quot;{dlab}_train&quot;])
+            except StopIteration:
+                iters[f&quot;{dlab}_train&quot;] = iter(loaders[f&quot;{dlab}_train&quot;])
+                x, y = next(iters[f&quot;{dlab}_train&quot;])
+            x, y = x.to(DEVICE), y.to(DEVICE)
+            loss = model(x, y, get_mask(labels, fwd_exps, DEVICE),
+                         get_mask(labels, bck_exps, DEVICE).bool())[1]
+            loss.backward()
+            grads = [p for p in model.parameters() if p.grad is not None]
+            if grads: torch.nn.utils.clip_grad_norm_(grads, GRAD_CLIP)
+            for lab in labels:
+                if any(p.grad is not None for p in model.get_params(lab)): opts[lab].step()
+            for opt in opts.values(): opt.zero_grad(set_to_none=True)
+            step += 1
+    Path(&quot;checkpoints&quot;).mkdir(exist_ok=True)
+    torch.save({&quot;model&quot;: model.state_dict(), &quot;labels&quot;: labels},
+               &quot;checkpoints/gram_stories_3aux.pt&quot;)
+    return model, labels
+
+def evaluate(model, loaders, labels, aux_labels, device):
+    model.eval()
+    with torch.no_grad():
+        for lab in [&quot;core&quot;] + aux_labels:
+            fwd = (&quot;core&quot;, lab) if lab in aux_labels else (&quot;core&quot;,)
+            total = 0.0; count = 0
+            for x, y in loaders[f&quot;{lab}_test&quot;]:
+                _, loss = model(x.to(device), y.to(device), get_mask(labels, fwd, device),
+                                get_mask(labels, fwd, device).bool())
+                total += loss.item(); count += 1
+                if count &gt;= 20: break
+            print(lab, total / max(count, 1))</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 20 · Inference with module switching</h3>
+<div class="markdown">
+  <p>
+    The <code>generate</code> function wraps the model’s autoregressive generation, applying a user‑defined set of active modules via a forward mask. <code>demo_switching</code> then demonstrates five different module configurations:
+  </p>
+  <ol>
+    <li>Core only</li>
+    <li>Core + first auxiliary topic (alien‑encounters)</li>
+    <li>Core + second auxiliary (dinosaurs)</li>
+    <li>Core + third auxiliary (magical‑objects)</li>
+    <li>Core + all three auxiliaries simultaneously</li>
+  </ol>
+  <p>
+    The same starting prompt is fed to each configuration, and the output token IDs are printed. This showcases how the model’s generation style shifts when different expert modules are activated, even with the same core knowledge base. In a full pipeline, these IDs would be decoded with a tokenizer to reveal the story text.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 21 · Generation and switching demo</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>def generate(model, labels, prompt_ids, active_modules,
+             max_new=100, temperature=0.8, top_k=40):
+    model.eval()
+    dev = next(model.parameters()).device
+    fwd_m = get_mask(labels, tuple(active_modules), dev)
+    return model.generate(prompt_ids.to(dev), max_new, fwd_m, temperature, top_k)
+
+def demo_switching(model, labels, aux_labels):
+    # Replace this with real tokenizer.encode(...) when available.
+    prompt_ids = torch.tensor([[1, 42, 100, 250, 30]], dtype=torch.long)
+    configs = [
+        ([&quot;core&quot;], &quot;CORE ONLY&quot;),
+        ([&quot;core&quot;, aux_labels[0]], f&quot;CORE + {aux_labels[0].upper()}&quot;),
+        ([&quot;core&quot;, aux_labels[1]], f&quot;CORE + {aux_labels[1].upper()}&quot;),
+        ([&quot;core&quot;, aux_labels[2]], f&quot;CORE + {aux_labels[2].upper()}&quot;),
+        ([&quot;core&quot;] + aux_labels, &quot;CORE + ALL AUX&quot;),
+    ]
+    for mods, desc in configs:
+        print(f&quot;\n&gt;&gt;&gt; {desc}\nActive modules: {mods}&quot;)
+        out = generate(model, labels, prompt_ids, mods, max_new=50)
+        print(f&quot;Output IDs: {out[0].tolist()[:15]}...&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    model, labels = train()
+    demo_switching(model, labels, AUX_TOPICS)</code></pre>
+</details>
+</section>
+
+<section class="cell markdown"><h3>Cell 22 · Token‑count metadata</h3>
+<div class="markdown">
+  <p>
+    A separate <code>metadata.json</code> file contains the total token counts for each story category, split by train and test. This cell loads that JSON, sums the train and test counts, and displays them as a pandas DataFrame rendered as a Markdown table. This gives a quick overview of the dataset size and distribution across topics, helping to verify that all expected files are present and that the data is balanced enough for training.
+  </p>
+</div>
+</section>
+
+<section class="cell code"><h3>Cell 23 · Token‑count table</h3>
+<details>
+  <summary>▼ Show code</summary>
+  <pre><code>import json
+import pandas as pd
+from pathlib import Path
+
+metadata_path = Path(&quot;/content/metadata (1).json&quot;)
+with open(metadata_path, &quot;r&quot;) as f:
+    metadata = json.load(f)
+
+data_for_df = []
+for category_name, category_data in metadata.items():
+    if category_name != &quot;all&quot;:
+        train_tokens = category_data.get(&quot;train&quot;, {}).get(&quot;total_tokens&quot;, 0)
+        test_tokens = category_data.get(&quot;test&quot;, {}).get(&quot;total_tokens&quot;, 0)
+        data_for_df.append({
+            &quot;Story Type&quot;: category_name,
+            &quot;Total Tokens&quot;: train_tokens + test_tokens
+        })
+
+tokens_df = pd.DataFrame(data_for_df)
+print(tokens_df.to_markdown(index=False))</code></pre>
+</details>
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ <h1>GRAM Module Comparison</h1>
+  <p class="subtitle">Base model vs. each auxiliary topic vs. all combined</p>
+
+  <pre class="prompt-pre"><code><strong>Prompt:</strong> Once upon a time, in a distant galaxy</code></pre>
+
+  <div class="comparison-section">
+    <div class="section-header">
+      <div class="section-modules">
+        <div class="module-title">core</div>
+        <div class="module-tags">
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f0883e22;color:#f0883e;border:1px solid #f0883e44">core</span>
+        </div>
+      </div>
+      <div class="section-stats">1010 tokens</div>
+    </div>
+    <div class="section-body">
+      <span style="color:#8b949e">once upon a time, in a distant galaxy [EOS]</span> <span style="color:#79c0ff">eagerly, a girl named alice found a map. inside the map, she found sparkling stones that sparkled in the sand. mia opened it with a heart, and she pressed a key on the map. inside the map, she met a young girl named lily. she showed a hidden treasure with a map. this map led her to a map that led to a cave called them through the woods. &quot; is that she? &quot; she asked. the map led her to a door made of stones. &quot; welcome, &quot; alice said. they dug in bushes and saw glowing stones, glowing like tiny coins. &quot; the treasure is the treasure! &quot; they asked. leo smiled, &quot; it feels like a treasure, &quot; he said. &quot; i thought it was a key to the treasure. &quot; &quot; they hurried back home, eager to find the treasure. after walking, they uncovered the map. she reached a clearing with a map, revealing an old box. it led them to a door that looked old and dusty. &quot; i see, &quot; mia said, her heart racing. as she opened it, the map grew cold. she followed it away, the map led her way. suddenly, a tiny rabbit hopped by, revealing a figure. it seemed to a hidden treasure. it was a hidden spot marked on the map leading to the treasure. mia &#x27; s heart raced with joy, and she followed the map. she shared the map &#x27; s path, each step echoing, leading her through thick fog. after many days, she found a hidden spot marked on the map on the map. she pushed the map aside, following the map. the map led her to her deeper into the map, where the treasure was marked with the map. [EOS] at the map, the trees whispered tales of gold coins and old maps. the map held many marks and a wise old man. each step brought them closer to her, guiding her to their memories that seemed to enter. suddenly, they set out on the map. mia heard whispers of the map led her deeper into a hidden garden. the map led her to a narrow stairs, leading her deeper into the map. the map led her deeper into the ruins. the map had shown a deeper into the map led her on the treasure twisted and shadows that led her further into the map. the map led her further upon a treasure lay before a map, a treasure hidden in the map, filled with gold coins and light. she met a large stones and a wise old man. the map stood there was an old man with a pirate. the boy named samuel spoke of gold coins and letters from the map. with a curious heart, he shared her heart full of gold, he showed a secret that said to tell stories of kindness. the girl shared his letters, the map taught them about the treasure. the map led her about a treasure together, hidden in the map, sharing a treasure that would lead them joy and the real treasure. [EOS] upon a night, a wise old turtle named leo shared stories of gold. they met under a pirate and a wise old tree, a pirate. this map was a pirate thought it was a map. &quot; where should i seek the treasure? &quot; her dad asked the map shows on the map, &quot; he whispered. &quot; it leads them closer, curious others. &quot; together, we will find the map, but we are all a treasure, and the map is the map forever. &quot; samuel thought of the map, they searched for clues, excitement and kept him on many map. the map led them to a clue, the map. inside were letters from the map, they found a tall door. they searched to the map, which led them together, the map. the map showed gold and tall tree, they found a treasure. at the map stood tall tree, covered in old branches and glowing stones. the tree told stories of gold, they had strange marks of gold and shiny stones. each pirate told of all felt like a treasure. this stone, they decided to find it, they dug and decided to find the treasure for gold or jewels. they decided to follow the map, they packed their bags and follow the map. after many dug, they set sails and made friends found the map. with smiles, they followed the map. inside were their faces of gold, they found old toys and old tree. the sun shone bright, they found old wood, but covered in rocks that looked very old faces. they discovered a circle of shells and old toys, where they found old stones. they discovered a big box. inside were old map led them of old coin. it showed the map filled the map : toys and letters from the boys shared stories about the compassion, the map. the boy shared stories of those moments and a note, and a treasure hunt. the map, they said, they promised a story of the treasure. they found the map brought them closer together on the</span>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <div class="section-header">
+      <div class="section-modules">
+        <div class="module-title">core + alien-encounters</div>
+        <div class="module-tags">
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f0883e22;color:#f0883e;border:1px solid #f0883e44">core</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#a371f722;color:#a371f7;border:1px solid #a371f744">alien-encounters</span>
+        </div>
+      </div>
+      <div class="section-stats">1010 tokens</div>
+    </div>
+    <div class="section-body">
+      <span style="color:#8b949e">once upon a time, in a distant galaxy [EOS]</span> <span style="color:#79c0ff">quietly, a girl stepped forward to the edge of a castle. she was searching for a lost city. inside, she found a city called her true self. this city was filled with strange symbols and a new world. this city held a place of hope and a place of dreams. one day, she decided to go, hoping to follow it. as she sat, she saw bright lights dancing in the walls. a room filled with colorful symbols and strange lights. she felt herself in her own, and suddenly, she felt a dance around her. the door opened, and out came tiny, filled with bright colors and warm lights. the boy felt like he was just a hero, and she was in a world where the world was filled with music. they laughed and played, filled with sounds, their voices and laughter. she missed the city and laughter, the girl felt the warmth. suddenly, the city of the city began to fade away, and the city was filled with joy. each place was different, and she felt the magic of her sadness. she realized that art can light. sometimes, all the future, in her heart, there was a way to their home. rita left the mirror, and she began to read the city. she walked back into the room, feeling the warmth of the past and the spirit. her laughter echoed in the shadows, and the light faded. [EOS] a small town, a boy watched the light outside. it was unlike anything he liked in the sky, but no one else to touch the empty streets. he thought it was hidden in a time, with a heavy heart. as he walked alone, he spotted a strange figure on the door. it was a tiny, silver keyway. it was a small, and covered in strange symbols, like a mark in vines. it seemed to open, and a small, she felt a rush of ideas. he stepped inside, and he felt a deep sense of excitement. he followed the door, and as the door opened, to set, a door opened. out came an alien with a tiny hands and a soft glow. it looked at him with strange eyes. it told a friendly smile, but the creatures emerged soft in the room. they pointed at each one and smiled, leading to a group of the treasure hidden in the house. they were their fears and alive, unaware of their secrets. they spoke of their city, and stories of the boy shared his tale, sharing stories of the worlds and laughter. they spoke of their world made of ancient traditions and stories, but they warned him, and the map began to listen. emmanuel &#x27; s heart raced. &quot; what do you want? &quot; he asked, stepping closer. the fairy nodded, and the alien explained that their words were calling for something. &quot; we have built a place for the way to take the light, &quot; it said. the child hesitated, but it felt a deep inside her, like music. each word took a step forward, and the ship opened, revealing a room filled with magic and light. at last, the girl spoke of the boy who had an idea, not to go. they spoke of the world, filled with memories from far away. they laughed and grew stronger, filled with joy. she realized that true joy could not be found in unexpected places. with newfound warmth, she left the fairy, understanding of their ancestors, and the magic of all over her world. [EOS] amidst the light, a small village filled with gentle sounds. one day, a curious boy named samuel woke up and saw a shooting star. &quot; what if it is hidden? &quot; he wondered, feeling a strange connection. suddenly, a strange glow appeared. out came a tall figure emerged a tall, its voice like a flower. &quot; i am this tree, &quot; it said, &quot; the star creature said, its voice soft. the girl felt a pull, &quot; we must follow you. &quot; the man felt her heart. &quot; can i let the answer? &quot; he asked. the robot nodded, its voice soft and filled with wonder. &quot; we need your words. &quot; lily felt a pull of courage. &quot; what do you need? &quot; she asked. the dragon hesitated but warned. &quot; of the dragon is not easy. &quot; the figure looked puzzled. &quot; what do you want? &quot; it asked, its voice shaking. &quot; the alien urged, &quot; i will find your heart. &quot; the star creature smiled, revealing a piece of its own. &quot; but what do you want? &quot; &quot; she thought, feeling a twist in his voice. the creature nodded. &quot; yes! &quot; it said. &quot; but first, &quot; it warned. &quot; i want to learn. &quot; the fairy nodded, her voice grew stronger. &quot; they are not afraid. it might be true. &quot; the girl felt a spark of relief wash over her words. &quot; what should i do? &quot; the child thought, &quot; it continued. &quot; they</span>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <div class="section-header">
+      <div class="section-modules">
+        <div class="module-title">core + dinosaurs</div>
+        <div class="module-tags">
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f0883e22;color:#f0883e;border:1px solid #f0883e44">core</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#3fb95022;color:#3fb950;border:1px solid #3fb95044">dinosaurs</span>
+        </div>
+      </div>
+      <div class="section-stats">1010 tokens</div>
+    </div>
+    <div class="section-body">
+      <span style="color:#8b949e">once upon a time, in a distant galaxy [EOS]</span> <span style="color:#79c0ff">in a misty hills, a small girl found a map. she wanted to tell him, but he believed it was too late. he had heard tales of treasure in her worlds. it seemed to call him, but she felt a strange pull to him. as he walked, he found the map on the map. it was old and faded, and the trees were filled with shadows. suddenly, he spotted a big bear. it was a large machine, half - buried in the sunlight. the boy &#x27; s heart raced. his heart raced. he ran through the woods, feeling the thrill of fear. he followed the map closely, but he stayed in, the trees reaching out. the path was thick and thick branches. he saw a figure in the woods. it was dark and dark. he had heard, but the door was cold. what if he never found! he pushed out. to his surprise, he saw a small box. inside, he found a strange old box. it glowed softly. his heart raced. he found it. to his surprise, the box showed him secrets of a beautiful garden. the real treasure was not jewels, but also old love. they had forgotten stories of his friends. they laughed and ran. he listened, feeling a connection together. the girl found them, eyes wide. they were gone, but dark and cold. the map showed that the treasure was not just the gold ; it was a treasure. it showed a time to the treasure. the treasure was not gold ; it was the treasure of his heart. he smiled. with the treasure, he left the treasure, he knew they were a true treasure. the real treasure was the real prize, but the real treasure was a treasure. [EOS] under the valley, a girl felt the weight of understanding her adventure. she had always been gone, but her heart of the true treasure had taken. she had told her friends, but it was a piece of her own treasure. she was not alone in the treasure, but also a friend who had given her to be found in this spots. as she returned home, she asked her family. they had turned and decided to help her be honest and found a true treasure hunt, but now she could not let them go. [EOS] under the sand, a young girl named kim was her heart full of joy. the woods were tall and bright and strange, with shadows. she took a map in hand in her pocket. inside, she met a note that seemed like a treasure. the box looked sad. &quot; what will we need to find? &quot; she asked. lily giggled, &quot; i want to follow the map! &quot; but kim felt scared. she followed the letter. the map led her to the map and followed the path, excited. the map led her on, but with a long time, she saw something hard. the path was hard, and the map was locked. &quot; is this? &quot; she thought. she walked through the woods, feeling the cool grass. the map led her deeper into a small path, and the map led her to an old tree. &quot; i want this, &quot; she thought, but the map led her to an old treasure. it led her to a tall tree, &quot; the treasure is the treasure. &quot; the other gold, with determination, she took a deep breath. &quot; i will help you. &quot; i found a deep breath and walked toward the map. &quot; with a deep breath, she walked closer, her eyes widened in fear. the map led her hands, and she followed the map, and found her hands. &quot; i found the treasure, &quot; the treasure! &quot; she said, feeling a wave of peace. the map was strong. &quot; she left the treasure, &quot; the treasure! &quot; the map holds a treasure! &quot; she said. she felt proud of her heart of her friends and her friends. she decided to search. the treasure, the map showed a hidden treasure, the map. &quot; yes! &quot; she said, &quot; i found it would be special. &quot; the treasure hunters found the treasure! &quot; she exclaimed. the treasure was a treasure. &quot; she felt her heart warm inside her heart. &quot; i will be wise, &quot; she said, &quot; the true treasure is our friendship! &quot; she said, tears in her eyes shining like the stars. the map showed the treasure was a treasure. [EOS] on the night, a little boy found a small box. he had hidden on the treasure, waiting for gold. many things were golden coins and dusty books before. &quot; i want to find the treasure, &quot; he asked. &quot; he asked, &quot; the treasure is mine if we find gold or new. &quot; he nodded, and you felt proud. &quot; the map had said, &quot; a treasure! &quot; the captain sighed. &quot; yes, you may guide. &quot; they followed the map, they found clues. &quot; the girl smiled, remembering their adventure. they</span>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <div class="section-header">
+      <div class="section-modules">
+        <div class="module-title">core + magical-objects</div>
+        <div class="module-tags">
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f0883e22;color:#f0883e;border:1px solid #f0883e44">core</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f778ba22;color:#f778ba;border:1px solid #f778ba44">magical-objects</span>
+        </div>
+      </div>
+      <div class="section-stats">1010 tokens</div>
+    </div>
+    <div class="section-body">
+      <span style="color:#8b949e">once upon a time, in a distant galaxy [EOS]</span> <span style="color:#79c0ff">under a bright sky, a girl named mia found a shimmering shell. it sparkled like stars. it sparkled in the sunlight, and he felt drawn to it. the stone was bright, with colors he wanted to take it. he wanted to find a wish, but no one would not see. a small voice said, &quot; follow. &quot; mia walked among the shell. she opened the stone and found a small, shining light. it was a tiny, shining bright like the stars. he picked it up and looked like a light. as he reached out, the stone began to hum. the stone creaked, and a warm glow filled the air. she felt a mix of joy and sorrow. &quot; can i go there? &quot; she asked. the gem said, &quot; you need a choice. &quot; mia thought of the stone and saw it was a piece of the stone. the girl smiled. &quot; this is your heart, &quot; she said. she thought of her dreams and fears. suddenly, she saw a bird swimming around her. it was smooth, and she felt excitement. &quot; i wish for my heart, &quot; she said. she thought hard and nodded. &quot; yes! &quot; she thought. she decided to follow the stone. the stone led her to a path to her. &quot; i should follow it, &quot; it said. the stone was filled with colors and light. the girl felt a strange warmth. &quot; i need it to be brave! &quot; she shouted. the stone glowed brighter. to her surprise, she reached out of the stone. she reached the stone and saw a tiny stone. it was not a star but the stone. it whispered, &quot; you wish. what do i go here? &quot; mia looked and gasped. she picked it up. the stone glowed, and a bright light appeared. the stone glowed in the stone. it seemed even brighter and turned into her feet. suddenly, shadows danced up. &quot; did you think it? &quot; it urged, &quot; it urged. mia felt a rush of curiosity. maybe she could not believe in. &quot; i have the stone, &quot; she said. the stone glowed softly. the stone had a gift from her hand, and a gentle breeze. the stone began to glow. &quot; you must be brave! &quot; it said. with a wave of light, she sat down the stone. the stone glowed bright, and slowly. she took it onto it, revealing a hidden cave. it was filled with bright colors and colorful creatures. &quot; this is wonderful! &quot; the stone said. &quot; the stone shines brighter, and you must trust you. &quot; they stepped onto the stone, and her heart filled with joy. the stone glowed brighter. the stone became a beautiful stone but bright, and the stone stayed in the stone. the boy closed it, and felt a wave of energy. &quot; what can i do from this? &quot; he wondered. suddenly, the stone glowed brighter. it began to fade. the mirror floated, and a light spread through the heart. it shifted, revealing the stone resting on the stone. she felt like a piece of her hands. each time, the stone shimmered, and a soft light appeared in the air. it danced in the shadows. the girl saw the stone and smiled, knowing that it was now a stone. the stone &#x27; s words brought light into the stone. she could not just in her throiced. but the girl felt a rush of peace. &quot; you have prove! &quot; she gasped as she said, &quot; the stone shows us a way to it wisely. &quot; the fox felt a sense of sadness in her heart. &quot; the stone can be hidden in the stone, &quot; she whispered. she smiled, seeing the stone again. she understood that the light remained and was hidden in her hand. the stone glowed in her hand, and the stone glowed brighter than the stone. in her hand, colors danced in the stone. the stone glowed, and glowed as the girl began to set. the stone flickered. they took her breath, feeling light, and warm and free. the stone glowed brightly, revealing the stone resting on the ground. they looked beautiful, and beautiful. the stone glowed, and changed. she knew the stone was not just a stone ; it could almost warm. the stone glowed softly, knowing it had its power of its magic. the stone was now beautiful, and the girl was alive. with her wand, she could not just a mirror but also its light. the stone glowed, and alive in the stone dimmed. mia realized the stone was only more than any flower but looked very different. the stone had its power to take the stone to her. the stone promised to hold it, but it remained hard. when her face was done, she held the stone. it was a reminder of her wish, a reminder of the stone to the stone. with the stone in her hand, the stone became a beautiful light. &quot; remember, &quot;</span>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <div class="section-header">
+      <div class="section-modules">
+        <div class="module-title">core + alien-encounters + dinosaurs + magical-objects</div>
+        <div class="module-tags">
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f0883e22;color:#f0883e;border:1px solid #f0883e44">core</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#a371f722;color:#a371f7;border:1px solid #a371f744">alien-encounters</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#3fb95022;color:#3fb950;border:1px solid #3fb95044">dinosaurs</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;background:#f778ba22;color:#f778ba;border:1px solid #f778ba44">magical-objects</span>
+        </div>
+      </div>
+      <div class="section-stats">1010 tokens</div>
+    </div>
+    <div class="section-body">
+      <span style="color:#8b949e">once upon a time, in a distant galaxy [EOS]</span> <span style="color:#79c0ff">near rocks, a bright red light surrounded by a field. inside, a bright, orange creature landed near a big, green door! it landed, and colorful, red as a large, tiny carving, blue, shiny, with a fluffy! out came a shiny, tall, blue creature with purple, purple red. inside shimmered, red like the tiny on it found youbackaon. it shimmered like a purple, green key. it landed softly slowly, and out came a tall and sparkled like a bright fairy. it chirped softly. it shimmered as a tall coin! it glimmered like a tall, like a warm glow. it pointed out, and purple man felt small robot! it smiled gently, blue, and tall, and leo felt a warm glow of orange, and shimmered like a tiny fairy! it shone like it. it looked around it sparkled like wings on a colorful, and had branches that glowed. the man felt different. the boy quickly, the boy heard a small girl, fluffy beardboodato felt a warm glow in its eyes. it had big, and cheerful, sparkling like tiny arms, blue nose. it looked friendly and golden, its big, big, blue girl, glimmering, fluffy but smelled very fluffy, white. it looked up and blue, and its hands, green rabbit danced and glowed. the boy felt big and cheerful, with big, wide face, shining like sweetly scaleso, colorful. it looked curious. it landed softly, and small. it chirped happily, and a playful. inside it showed him a tall, green map, bright and smooth, blue key in its tiny, blue stone that shimmered softly in a small, revealing alex discovered a beautiful, bright, and dusty, the fairy floated in a colorful, sparkling portal. out a small giant key! as a snow grin, a giant bunny, silver key zoomed out came small, and a colorful, with a cheerful, green key. it opened, and small dragon landed, blue tightwoaked and cracked and a shiny softly, white, silver, making a tall creature. it looked amazing and purple from above it shone like a tiny, and had shimmering. at kim felt light. inside with a tiny creature appeared, the boy into anipped loudly. it sparkled like a golden, colorful, its tiny fairy from its heart with a beautiful, warm smile. it held a bright, bright scales and shiny key, wide eyes. a trailing feather appeared in a tiny, glowing creature with big, sparkling softly. it looked into its tiny, blue with a bright colors. it was tall, and a shiny, silver, blue key, and blue girl named kim with big, with tall girl was big, blue with big and a big, bright lightbedoreties. it peeked out appeared like a tall dragon. the rabbit. one, colorful, with big, bright, green key landed softly near it looked tiny lock. it landed, with a a big, silver key from it! it glowed softly, and glowed, and a tiny trofire. out a strange, bright lighthore of its tiny, sparkling, and a tiny dog appeared! leo with bright like a tiny creature appeared. out. out came aniggorabsity like a small, blue with blue, glowing cat, blue, colorful, blue nosebug landed in a tiny, a shiny, blue bearbilo from open, a tall man with blue tail! it sat out she with a colorful, sparkling, shining, and smooth one she loved soft, and glowed softly. it approached it. it shone in a cheerful, bright lightling, and out. a tiny, green bird perched upon its small, bright, greenian read them peeked out. &quot; hello upon the best - lightoaked in peace! &quot; wait! &quot; welcome a green, earth erupted from beyond the world. &quot; the girl exclaimed, purple man was tiny, glowing dog who alwaysgar, and gentle. it said, making a strange, its tiny girl felt a tiny tightenserrowdust appeared like sparkles. the door of lighto with a big, soft like a tall. it pointed at its tiny, glowing dragon! it sparkled like a shining,. its small, sparkling. the girl &#x27; s curious boy opened closely, a small coin, green door open, sparkling, orange, and small rabbit hopped a tiny spaceship. it chirped, and a colorful, green crown! a small box appeared, and anvous and an spaceship. out from it peeked out came funny, pink in the boy with big, bright and tall, green with big, green door! in a tall, mossquiatikon candy. it landed with big, blue, the boy felt a bright, green hathiant, sparkling, fluffy, and yellow heart with a large, fluffy, green dog. out</span>
+    </div>
+  </div>
+
+
+<h4>Conclusion</h4>
+  <p> one of the key problems with the generations is that it not being influenced by the topic. I think it is due to the data being used in the limited experiment from core but we do indeed get slight hints of the topic relevance. when I looked at the training loss I found the loss for the auxiliary modules with magical objects is very less hence it approximated well.
+
+This method in my opinion is very useful for serving independent labs. training seperate methods might not be possible and one serving end point could be used for multiple domains. I believe it also opens up a novel stream of ideas built on modules approch
+
+
+  </p>
+  </main>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    let dark = true;
+    function applyTheme() {
+      if (dark) {
+        document.body.classList.remove('light');
+        toggle.textContent = '☀️ light';
+      } else {
+        document.body.classList.add('light');
+        toggle.textContent = '🌙 dark';
+      }
+    }
+    toggle.addEventListener('click', () => {
+      dark = !dark;
+      applyTheme();
+      localStorage.setItem('gramTheme', dark ? 'dark' : 'light');
+    });
+    const saved = localStorage.getItem('gramTheme');
+    if (saved === 'light') dark = false;
+    applyTheme();
+
+    // KaTeX auto‑render – supports $...$ and $$...$$ while ignoring code blocks
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "$", right: "$", display: false}
+        ],
+        // ignore tags that typically contain code or verbatim content
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+        // optional: throwOnError: false to avoid breaking on malformed LaTeX
+        throwOnError: false
+      });
+      if (window.hljs) hljs.highlightAll();
+    });
+  </script>
+</body>
+</html>
